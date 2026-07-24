@@ -1,0 +1,425 @@
+/* Tailwind v4: @import "tailwindcss" expands inline, so font @imports must come first. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
+@import "tailwindcss";
+
+:root {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* ── ACCENT: fresh teal, one accent everywhere ───────────────────────── */
+  --accent: #0d9488; /* teal-600 */
+  --accent-hover: #0f766e; /* teal-700 */
+  --accent-soft: #f0fdfa; /* teal-50  */
+  --accent-softer: #ccfbf1; /* teal-100 */
+  --accent-ring: rgba(13, 148, 136, 0.3);
+  --on-accent: #ffffff;
+
+  /* ── NEUTRALS ─────────────────────────────────────────────────────────── */
+  --bg: #f6f8f8; /* app background, faint teal-grey */
+  --surface: #ffffff; /* cards */
+  --surface-2: #fbfcfc; /* subtle raised */
+  --border: #e5e9e9; /* hairline */
+  --border-strong: #d3d9d9;
+  --text: #0f172a; /* primary text */
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+
+  /* sidebar (dark) */
+  --nav-bg: #0f172a;
+  --nav-text: #cbd5e1;
+  --nav-muted: #64748b;
+  --nav-active-bg: rgba(13, 148, 136, 0.22);
+
+  /* semantic */
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #0d9488;
+  --info-soft: #f0fdfa;
+
+  /* ── TYPOGRAPHY SCALE (balanced density) ─────────────────────────────── */
+  --fs-xs: 0.75rem; /* 12 - meta, badges */
+  --fs-sm: 0.8125rem; /* 13 - table cells, secondary */
+  --fs-base: 0.875rem; /* 14 - body/UI default */
+  --fs-md: 1rem; /* 16 - emphasized */
+  --fs-lg: 1.125rem; /* 18 - card titles */
+  --fs-xl: 1.375rem; /* 22 - page titles */
+  --fs-2xl: 1.75rem; /* 28 - hero numbers */
+
+  /* ── SPACING / RADII / SHADOWS ───────────────────────────────────────── */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --radius-sm: 0.5rem;
+  --radius: 0.75rem;
+  --radius-lg: 1rem;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.12);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+/* Headings carry the display face */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+h1 {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+}
+h2 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+h3 {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+/* Tabular figures so numbers align in stats and tables */
+.num,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ACCENT UTILITIES (driven by the CSS var, so one change re-themes all) ─ */
+.bg-accent {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+.bg-accent:hover {
+  background-color: var(--accent-hover);
+}
+.text-accent {
+  color: var(--accent);
+}
+.border-accent {
+  border-color: var(--accent);
+}
+.bg-accent-soft {
+  background-color: var(--accent-soft);
+}
+.ring-accent:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* ── FORM CONTROLS ────────────────────────────────────────────────────── */
+.inp,
+select.inp,
+textarea.inp {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  font-size: var(--fs-base);
+  color: var(--text);
+  background: var(--surface);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.inp:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.inp::placeholder {
+  color: var(--text-faint);
+}
+
+/* ── CARDS ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.card-hover {
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s,
+    border-color 0.2s;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--border-strong);
+}
+
+/* ── TABLES ───────────────────────────────────────────────────────────── */
+table tbody tr {
+  transition: background-color 0.12s;
+}
+table tbody tr:hover {
+  background-color: var(--surface-2);
+}
+
+/* ── SCROLLBARS ───────────────────────────────────────────────────────── */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #cfd6d6;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #b3bcbc;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── ANIMATION ────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fadeUp 0.28s ease-out both;
+}
+
+/* ── RESPONSIVE: comfortable tap targets on mobile ───────────────────────── */
+@media (max-width: 640px) {
+  button,
+  a[role="button"],
+  .inp {
+    min-height: 42px;
+  }
+  :root {
+    --fs-xl: 1.25rem;
+    --fs-2xl: 1.5rem;
+  }
+}
+
+/* ── RESPONSIVE TABLES ────────────────────────────────────────────────────
+   Make every table scroll horizontally on small screens instead of breaking
+   the layout. Wrapping each <table> in a scroll container is the ideal fix,
+   but this global rule catches pages that don't have one yet. Tables keep a
+   sensible min-width so columns stay readable, and the page never overflows. */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* forms and filter rows stack on mobile */
+  .stack-mobile {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Utility you can wrap any table in for guaranteed horizontal scroll */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* ── #1: Times New Roman across the entire app ──────────────────────────── */
+:root {
+  font-family: "Times New Roman", Times, serif !important;
+}
+body,
+h1, h2, h3, h4, h5, h6,
+.font-display,
+input, select, textarea, button,
+/* Ant Design surfaces */
+.ant-typography,
+.ant-btn,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select,
+.ant-select-item,
+.ant-picker,
+.ant-modal,
+.ant-table,
+.ant-tabs,
+.ant-tag,
+.ant-menu,
+.ant-card,
+.ant-form,
+.ant-statistic {
+  font-family: "Times New Roman", Times, serif !important;
+}
+/* ============================================================================
+   TECHNEXT BRAND THEME  (paste at the BOTTOM of src/index.css)
+   Logo palette:  cyan #00D4F0  ->  sky #00A8F0  ->  indigo #4060F0  ->  violet #9050F0
+   Primary accent: blue #00A8F0 (readable middle of the gradient).
+   This overrides the old teal (#0d9488) app-wide, including AntD components.
+   ============================================================================ */
+
+:root {
+  /* Brand accents (from the logo) */
+  --brand-cyan: #00d4f0;
+  --brand-sky: #00a8f0;
+  --brand-indigo: #4060f0;
+  --brand-violet: #9050f0;
+  --brand-gradient: linear-gradient(
+    135deg,
+    #00d4f0 0%,
+    #00a8f0 40%,
+    #4060f0 75%,
+    #9050f0 100%
+  );
+
+  /* Re-point the app's existing accent variables to the brand blue */
+  --accent: #00a8f0 !important; /* was teal #0d9488 */
+  --accent-hover: #0088d0 !important;
+  --accent-soft: #e6f7ff !important;
+  --accent-softer: #bae7ff !important;
+  --accent-ring: rgba(0, 168, 240, 0.3) !important;
+  --on-accent: #ffffff !important;
+
+  /* Info semantic also follows brand */
+  --info: #00a8f0 !important;
+  --info-soft: #e6f7ff !important;
+}
+
+/* ---- AntD primary color override (every page hardcodes teal in its theme
+        token; this wins over it so the whole app turns brand-blue) ---- */
+
+/* Primary buttons */
+.ant-btn-primary {
+  background-color: #00a8f0 !important;
+  border-color: #00a8f0 !important;
+}
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background-color: #0088d0 !important;
+  border-color: #0088d0 !important;
+}
+.ant-btn-primary[disabled],
+.ant-btn-primary[disabled]:hover {
+  background-color: #bae7ff !important;
+  border-color: #bae7ff !important;
+  color: #ffffff !important;
+}
+
+/* Default buttons: brand-blue text/border on hover */
+.ant-btn-default:hover,
+.ant-btn-default:focus {
+  color: #00a8f0 !important;
+  border-color: #00a8f0 !important;
+}
+
+/* Links */
+.ant-btn-link,
+a.ant-typography,
+.ant-typography a {
+  color: #00a8f0 !important;
+}
+
+/* Tabs active state */
+.ant-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #00a8f0 !important;
+}
+.ant-tabs .ant-tabs-ink-bar {
+  background: #00a8f0 !important;
+}
+
+/* Segmented (List/Calendar toggle) selected */
+.ant-segmented .ant-segmented-item-selected {
+  color: #00a8f0 !important;
+}
+
+/* Inputs / selects / pickers focus ring */
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: #00a8f0 !important;
+  box-shadow: 0 0 0 2px rgba(0, 168, 240, 0.2) !important;
+}
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-select:hover .ant-select-selector,
+.ant-picker:hover {
+  border-color: #00a8f0 !important;
+}
+
+/* Selected option in dropdowns */
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #e6f7ff !important;
+  color: #0071b0 !important;
+}
+
+/* Checkboxes / radios / switches */
+.ant-checkbox-checked .ant-checkbox-inner,
+.ant-radio-checked .ant-radio-inner {
+  background-color: #00a8f0 !important;
+  border-color: #00a8f0 !important;
+}
+.ant-switch.ant-switch-checked {
+  background: #00a8f0 !important;
+}
+
+/* Pagination active */
+.ant-pagination .ant-pagination-item-active {
+  border-color: #00a8f0 !important;
+}
+.ant-pagination .ant-pagination-item-active a {
+  color: #00a8f0 !important;
+}
+
+/* Spin / loading indicator */
+.ant-spin .ant-spin-dot-item {
+  background-color: #00a8f0 !important;
+}
+
+/* Blue-tagged brand tags keep AntD semantics; primary "blue" tag -> brand */
+.ant-tag-blue,
+.ant-tag-processing {
+  color: #0071b0 !important;
+  background: #e6f7ff !important;
+  border-color: #91d5ff !important;
+}
+
+/* Sidebar active item (app uses --nav-active-bg) -> brand tint */
+:root {
+  --nav-active-bg: rgba(0, 168, 240, 0.22) !important;
+}
+
+/* Header/section icons that were teal (#0d9488) inline still show teal because
+   they're set via inline style; those are cosmetic. If you want them brand-blue,
+   search-replace "#0d9488" -> "#00A8F0" in the page files. This CSS handles all
+   AntD-driven color. */
