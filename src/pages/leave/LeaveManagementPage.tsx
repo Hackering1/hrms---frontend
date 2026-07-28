@@ -12,10 +12,8 @@ import {
   Tag,
   Tabs,
   Card,
-  Checkbox,
   Row,
   Col,
-  Popconfirm,
   Space,
   Spin,
 } from "antd";
@@ -30,7 +28,6 @@ import FileUpload from "../../components/ui/FileUpload";
 import { DonutChart, GroupedBars, pickColor } from "../../components/ui/Charts";
 import { useRole } from "../../hooks/useRole";
 import { leaveService } from "../../services/leaveService";
-import type { LeaveType } from "../../services/leaveService";
 import { selfService } from "../../services/selfService";
 import { managerService } from "../../services/managerService";
 import { resourceService } from "../../services/resourceService";
@@ -95,11 +92,6 @@ export default function LeaveManagementPage() {
           children: <ApplyTab />,
         },
         {
-          key: "types",
-          label: "Leave Types",
-          children: <LeaveTypesTab canManage={isHr || isSuperAdmin} />,
-        },
-        {
           key: "reports",
           label: "Reports",
           children: (
@@ -114,11 +106,6 @@ export default function LeaveManagementPage() {
       );
     } else if (isHr || isSuperAdmin) {
       tabs.push(
-        {
-          key: "types",
-          label: "Leave Types",
-          children: <LeaveTypesTab canManage={true} />,
-        },
         {
           key: "approvals",
           label: "Approvals",
@@ -155,188 +142,6 @@ export default function LeaveManagementPage() {
         <Tabs items={items} />
       </div>
     </ConfigProvider>
-  );
-}
-
-/* ----------------------------- Leave Types ----------------------------- */
-function LeaveTypesTab({ canManage }: { canManage: boolean }) {
-  const qc = useQueryClient();
-  const types = useQuery({
-    queryKey: ["leaveTypes"],
-    queryFn: leaveService.listTypes,
-  });
-  const [open, setOpen] = useState(false);
-  const blank = {
-    name: "",
-    code: "",
-    daysPerYear: 12,
-    applicableGender: "ALL",
-    requiresDocument: false,
-    isPaid: true,
-    isCarryForward: false,
-    isActive: true,
-  };
-  const [form, setForm] = useState<any>(blank);
-  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-
-  const save = useMutation({
-    mutationFn: () => resourceService.create("/leave-types", form),
-    onSuccess: () => {
-      toast.success("Leave type created");
-      setForm(blank);
-      setOpen(false);
-      qc.invalidateQueries({ queryKey: ["leaveTypes"] });
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? "Failed"),
-  });
-
-  const del = useMutation({
-    mutationFn: (id: number) =>
-      resourceService.remove("/leave-types", String(id)),
-    onSuccess: () => {
-      toast.success("Deleted");
-      qc.invalidateQueries({ queryKey: ["leaveTypes"] });
-    },
-  });
-
-  const rows = (types.data ?? []) as LeaveType[];
-
-  const columns = [
-    { title: "Name", dataIndex: "name", key: "name" },
-    { title: "Code", dataIndex: "code", key: "code" },
-    { title: "Days/Year", dataIndex: "daysPerYear", key: "daysPerYear" },
-    {
-      title: "Applicable",
-      key: "applicable",
-      render: (_: any, t: any) => t.applicableGender ?? "ALL",
-    },
-    {
-      title: "Proof?",
-      key: "proof",
-      render: (_: any, t: any) => (t.requiresDocument ? "Yes" : "No"),
-    },
-    {
-      title: "Paid?",
-      key: "paid",
-      render: (_: any, t: any) => (t.isPaid ? "Yes" : "No"),
-    },
-    ...(canManage
-      ? [
-          {
-            title: "Actions",
-            key: "actions",
-            align: "right" as const,
-            render: (_: any, t: any) => (
-              <Popconfirm
-                title="Delete this leave type?"
-                onConfirm={() => del.mutate(t.id)}
-              >
-                <AntButton size="small" danger>
-                  Delete
-                </AntButton>
-              </Popconfirm>
-            ),
-          },
-        ]
-      : []),
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {canManage && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <AntButton type="primary" onClick={() => setOpen((o) => !o)}>
-            {open ? "Close" : "+ Add Leave Type"}
-          </AntButton>
-        </div>
-      )}
-
-      {canManage && open && (
-        <Card>
-          <Row gutter={[12, 12]}>
-            <Col xs={24} md={12}>
-              <Field label="Name (e.g. Casual Leave)">
-                <AntInput
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                />
-              </Field>
-            </Col>
-            <Col xs={24} md={12}>
-              <Field label="Code (e.g. CL)">
-                <AntInput
-                  value={form.code}
-                  onChange={(e) => set("code", e.target.value)}
-                />
-              </Field>
-            </Col>
-            <Col xs={24} md={12}>
-              <Field label="Days per year">
-                <AntInput
-                  type="number"
-                  value={form.daysPerYear}
-                  onChange={(e) => set("daysPerYear", Number(e.target.value))}
-                />
-              </Field>
-            </Col>
-            <Col xs={24} md={12}>
-              <Field label="Applicable to">
-                <AntSelect
-                  value={form.applicableGender}
-                  onChange={(v) => set("applicableGender", v)}
-                  options={[
-                    { value: "ALL", label: "All" },
-                    { value: "MALE", label: "Male" },
-                    { value: "FEMALE", label: "Female" },
-                  ]}
-                />
-              </Field>
-            </Col>
-            <Col xs={24} md={12}>
-              <Checkbox
-                checked={form.requiresDocument}
-                onChange={(e) => set("requiresDocument", e.target.checked)}
-              >
-                Requires proof document (e.g. sick / maternity)
-              </Checkbox>
-            </Col>
-            <Col xs={24} md={12}>
-              <Checkbox
-                checked={form.isPaid}
-                onChange={(e) => set("isPaid", e.target.checked)}
-              >
-                Paid leave
-              </Checkbox>
-            </Col>
-          </Row>
-          <div
-            style={{
-              marginTop: 16,
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
-            <AntButton
-              type="primary"
-              loading={save.isPending}
-              disabled={!form.name || !form.code}
-              onClick={() => save.mutate()}
-            >
-              Create
-            </AntButton>
-          </div>
-        </Card>
-      )}
-
-      <Table
-        loading={types.isLoading}
-        rowKey={(t: any) => t.id}
-        columns={columns}
-        dataSource={rows}
-        locale={{ emptyText: "No leave types yet." }}
-        pagination={{ pageSize: 10 }}
-      />
-    </div>
   );
 }
 

@@ -10,7 +10,6 @@ import DocumentCategoriesPage from "../pages/documents/DocumentCategoriesPage";
 import EmployeeDocumentsPage from "../pages/documents/EmployeeDocumentsPage";
 import LeaveTypesPage from "../pages/leave/LeaveTypesPage";
 import LeaveManagementPage from "../pages/leave/LeaveManagementPage";
-import LeaveRequestsPage from "../pages/leave/LeaveRequestsPage";
 import HrOperationsPage from "../pages/hrops/HrOperationsPage";
 import LetterTemplatesPage from "../pages/letters/LetterTemplatesPage";
 import GeneratedLettersPage from "../pages/letters/GeneratedLettersPage";
@@ -91,9 +90,7 @@ export default function AppRoutes() {
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/manager" element={<ManagerPortalPage />} />
             <Route path="/regularization" element={<RegularizationPage />} />
-            <Route path="/leave/requests" element={<LeaveRequestsPage />} />
             <Route path="/leave/types" element={<LeaveTypesPage />} />
-            <Route path="/leave" element={<LeaveManagementPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route
               path="/documents/categories"

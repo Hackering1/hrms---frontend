@@ -533,6 +533,12 @@ export default function EmployeesPage() {
     { title: "First Name", dataIndex: "firstName", key: "firstName" },
     { title: "Last Name", dataIndex: "lastName", key: "lastName" },
     {
+      title: "Date of Joining",
+      dataIndex: "dateOfJoining",
+      key: "dateOfJoining",
+      render: (v: string) => (v ? dayjs(v).format("DD MMM YYYY") : "\u2014"),
+    },
+    {
       title: "Email",
       dataIndex: "email",
       key: "email",
@@ -582,6 +588,35 @@ export default function EmployeesPage() {
           </Tag>
         );
       },
+    },
+    {
+      title: "Aadhar",
+      dataIndex: "aadhaarNumber",
+      key: "aadhaarNumber",
+      render: (v: string) => v ?? "\u2014",
+    },
+    {
+      title: "PAN",
+      dataIndex: "panNumber",
+      key: "panNumber",
+      render: (v: string) => v ?? "\u2014",
+    },
+    {
+      title: "Account No",
+      dataIndex: "bankAccountNumber",
+      key: "bankAccountNumber",
+      render: (v: string) => v ?? "\u2014",
+    },
+    {
+      title: "IFSC",
+      dataIndex: "ifscCode",
+      key: "ifscCode",
+      render: (v: string) => v ?? "\u2014",
+    },
+    {
+      title: "Address",
+      key: "address",
+      render: (_: any, row: any) => row.address ?? "\u2014",
     },
     {
       title: "Status",
@@ -670,6 +705,7 @@ export default function EmployeesPage() {
           rowKey={(r: any) => r.id}
           columns={columns}
           dataSource={filtered as any[]}
+          scroll={{ x: "max-content" }}
           locale={{
             emptyText: (
               <Empty description="No employees yet">
