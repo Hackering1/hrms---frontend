@@ -217,7 +217,8 @@ export default function EmployeesPage() {
 
   const allRows = list.data ?? [];
 
-  // #7b: managers available as "reporting manager" when creating an EMPLOYEE login.
+  // Managers available as "reporting manager" when creating an EMPLOYEE or
+  // MANAGER login (a manager can report to a senior manager too).
   const managerOptions = (allRows as ResourceRecord[])
     .filter((r) => isManagerRow(r))
     .map((r) => ({
@@ -301,8 +302,15 @@ export default function EmployeesPage() {
           "Employee added. Login: " +
             resp.email +
             " | Password: " +
-            resp.tempPassword,
+            resp.tempPassword +
+            ". A welcome email has also been sent to them.",
           { duration: 12000 },
+        );
+      } else if (!editingId && resp && resp.email) {
+        toast.success(
+          "Employee added. A welcome email has been sent to " +
+            resp.email +
+            ".",
         );
       } else {
         toast.success(editingId ? "Employee updated" : "Employee added");
@@ -434,7 +442,10 @@ export default function EmployeesPage() {
     if (!editingId) {
       if (!form.loginRole) missing.push("Create Login As");
       if (!form.password) missing.push("Login Password");
-      if (form.loginRole === "EMPLOYEE" && !form.managerId) {
+      if (
+        (form.loginRole === "EMPLOYEE" || form.loginRole === "MANAGER") &&
+        !form.managerId
+      ) {
         missing.push("Reporting Manager");
       }
     }
@@ -766,6 +777,12 @@ export default function EmployeesPage() {
                   <AntInput
                     value={form.employeeCode ?? ""}
                     onChange={(e) => set("employeeCode", e.target.value)}
+                    disabled={Boolean(editingId) && !isHr}
+                    title={
+                      Boolean(editingId) && !isHr
+                        ? "Only a Super Admin / HR can change an existing Employee ID"
+                        : undefined
+                    }
                   />
                 </Field>
                 <Field label="First Name *">
@@ -959,20 +976,23 @@ export default function EmployeesPage() {
                     ]}
                   />
                 </Field>
-                {/* #7b: reporting manager appears only when creating an EMPLOYEE login. */}
-                {!editingId && form.loginRole === "EMPLOYEE" && (
-                  <Field label="Reporting Manager *">
-                    <AntSelect
-                      style={{ width: "100%" }}
-                      showSearch
-                      optionFilterProp="label"
-                      value={form.managerId || undefined}
-                      onChange={(v) => set("managerId", v)}
-                      placeholder={"\u2014 Select manager \u2014"}
-                      options={managerOptions}
-                    />
-                  </Field>
-                )}
+                {/* Reporting manager appears when creating either an EMPLOYEE or a
+                    MANAGER login \u2014 a manager can report to a senior manager too. */}
+                {!editingId &&
+                  (form.loginRole === "EMPLOYEE" ||
+                    form.loginRole === "MANAGER") && (
+                    <Field label="Reporting Manager *">
+                      <AntSelect
+                        style={{ width: "100%" }}
+                        showSearch
+                        optionFilterProp="label"
+                        value={form.managerId || undefined}
+                        onChange={(v) => set("managerId", v)}
+                        placeholder={"\u2014 Select manager \u2014"}
+                        options={managerOptions}
+                      />
+                    </Field>
+                  )}
                 <Field label="Login Password *">
                   <AntInput
                     value={form.password ?? "User@0412"}
