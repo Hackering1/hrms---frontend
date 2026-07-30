@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   ConfigProvider,
@@ -119,6 +119,7 @@ const statusColor: Record<string, string> = {
 
 export default function EmployeesPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const roles = useAuthStore((s) => s.roles) ?? [];
   const canManage = roles.some((r) =>
     ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"].includes(r),
@@ -686,15 +687,22 @@ export default function EmployeesPage() {
               </Text>
             )}
           </div>
-          {canManage && (
-            <AntButton
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreate}
-            >
-              Add Employee
-            </AntButton>
-          )}
+          <Space>
+            {canManage && (
+              <AntButton
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreate}
+              >
+                Add Employee
+              </AntButton>
+            )}
+            {roles.includes("SUPER_ADMIN") && (
+              <AntButton onClick={() => navigate("/employees/invite")}>
+                Invite Employee
+              </AntButton>
+            )}
+          </Space>
         </div>
 
         {!list.isLoading && rows.length > 0 && (

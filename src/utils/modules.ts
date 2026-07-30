@@ -14,6 +14,7 @@ import {
 export const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"];
 export const MANAGER_PLUS = [...HR, "MANAGER"];
 export const ALL: string[] | undefined = undefined;
+export const SUPER_ADMIN_ONLY = ["SUPER_ADMIN"];
 
 export interface SubPage {
   label: string;
@@ -51,6 +52,21 @@ export const MODULES: Module[] = [
     roles: MANAGER_PLUS,
     pages: [
       { label: "All Employees", path: "/employees", roles: MANAGER_PLUS },
+      {
+        label: "Invite Employee",
+        path: "/employees/invite",
+        roles: SUPER_ADMIN_ONLY,
+      },
+      {
+        label: "Invitations",
+        path: "/employees/invitations",
+        roles: SUPER_ADMIN_ONLY,
+      },
+      {
+        label: "Pending Profiles",
+        path: "/employees/pending",
+        roles: SUPER_ADMIN_ONLY,
+      },
       { label: "Documents", path: "/documents/employee" },
       {
         label: "Categories",
