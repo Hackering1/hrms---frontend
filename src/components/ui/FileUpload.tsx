@@ -11,6 +11,12 @@ interface Props {
   accept?: string;
   // max file size in MB (default 5)
   maxSizeMB?: number;
+  // Optional override for how the file is actually uploaded. Defaults to the
+  // authenticated fileService.upload (JWT attached) — every existing usage of
+  // this component keeps working exactly as before. The public onboarding page
+  // passes a token-scoped upload function instead, since the candidate has no
+  // JWT yet.
+  uploadFn?: (file: File) => Promise<{ url: string; fileName: string }>;
 }
 
 export default function FileUpload({
@@ -19,6 +25,7 @@ export default function FileUpload({
   label = "Attach file",
   accept = ".pdf,.doc,.docx,.png,.jpg,.jpeg",
   maxSizeMB = 5,
+  uploadFn,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -54,7 +61,9 @@ export default function FileUpload({
     setBusy(true);
     setError("");
     try {
-      const res = await fileService.upload(file);
+      const res = uploadFn
+        ? await uploadFn(file)
+        : await fileService.upload(file);
       setName(res.fileName);
       onUploaded(res.url, res.fileName);
     } catch (err: any) {

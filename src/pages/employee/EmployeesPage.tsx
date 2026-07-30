@@ -1314,7 +1314,7 @@ export default function EmployeesPage() {
 }
 
 /* ---------- small presentational helpers ---------- */
-function Section({
+export function Section({
   title,
   action,
   children,
@@ -1350,7 +1350,7 @@ function Section({
     </div>
   );
 }
-function Grid({ children }: { children: React.ReactNode }) {
+export function Grid({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
@@ -1447,7 +1447,7 @@ function DocUploadList({
     </div>
   );
 }
-function Field({
+export function Field({
   label,
   children,
 }: {
@@ -1467,7 +1467,7 @@ function Field({
     </div>
   );
 }
-function MonthYear({
+export function MonthYear({
   label,
   m,
   y,

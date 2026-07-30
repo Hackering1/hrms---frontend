@@ -28,6 +28,10 @@ import CompanyCalendarPage from "../pages/organization/CompanyCalendarPage";
 import SettingsPage from "../pages/settings/SettingsPage";
 import TicketsPage from "../pages/tickets/TicketsPage";
 import MyOrganizationPage from "../pages/self-org/MyOrganizationPage";
+import InviteEmployeePage from "../pages/employee/InviteEmployeePage";
+import InvitationsPage from "../pages/employee/InvitationsPage";
+import PendingProfilesPage from "../pages/employee/PendingProfilesPage";
+import EmployeeOnboardingPage from "../pages/onboarding/EmployeeOnboardingPage";
 import { useAuthStore } from "../store/authStore";
 
 /**
@@ -39,6 +43,7 @@ import { useAuthStore } from "../store/authStore";
 const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"]; // effectively Super Admin today
 const MANAGER_PLUS = [...HR, "MANAGER"];
 const EMPLOYEE_ONLY = ["EMPLOYEE"];
+const SUPER_ADMIN_ONLY = ["SUPER_ADMIN"];
 
 export default function AppRoutes() {
   const mustChangePassword = useAuthStore((s) => s.mustChangePassword);
@@ -46,6 +51,13 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      {/* PUBLIC — no login required. The candidate reaches this via the emailed
+          invite link and has no account yet; the onboarding token in the URL
+          query string is the only credential involved (validated server-side
+          on every call). Deliberately a sibling of /login, NOT nested under
+          ProtectedRoute. */}
+      <Route path="/employee/onboarding" element={<EmployeeOnboardingPage />} />
 
       {/* Everything below requires authentication */}
       <Route element={<ProtectedRoute />}>
@@ -125,6 +137,22 @@ export default function AppRoutes() {
           {/* ---- HR / Super Admin only ---- */}
           <Route element={<RoleRoute allow={HR} />}>
             <Route path="/tickets" element={<TicketsPage />} />
+          </Route>
+
+          {/* ---- Super Admin only — Invite Employee flow. Managers and
+              Employees must never reach these, even by typing the URL
+              directly (RoleRoute enforces this; the backend @PreAuthorize
+              on EmployeeInviteController is the real security boundary). ---- */}
+          <Route element={<RoleRoute allow={SUPER_ADMIN_ONLY} />}>
+            <Route path="/employees/invite" element={<InviteEmployeePage />} />
+            <Route
+              path="/employees/invitations"
+              element={<InvitationsPage />}
+            />
+            <Route
+              path="/employees/pending"
+              element={<PendingProfilesPage />}
+            />
           </Route>
         </Route>
       </Route>

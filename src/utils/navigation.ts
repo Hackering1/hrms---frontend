@@ -19,6 +19,9 @@ import {
   CalendarDays,
   Settings,
   Ticket,
+  UserPlus,
+  MailCheck,
+  Hourglass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -150,6 +153,27 @@ export const NAV_ITEMS: NavItem[] = [
 
   // HR / admin / manager (managers can view and edit employees)
   { label: "Employees", path: "/employees", icon: Users, roles: MANAGER_PLUS },
+
+  // Super Admin only — Managers and Employees must never see these (spec:
+  // only the Super Admin may onboard new employees).
+  {
+    label: "Invite Employee",
+    path: "/employees/invite",
+    icon: UserPlus,
+    roles: SUPER_ADMIN_ONLY,
+  },
+  {
+    label: "Invitations",
+    path: "/employees/invitations",
+    icon: MailCheck,
+    roles: SUPER_ADMIN_ONLY,
+  },
+  {
+    label: "Pending Profiles",
+    path: "/employees/pending",
+    icon: Hourglass,
+    roles: SUPER_ADMIN_ONLY,
+  },
 
   // Everyone (admins also get Users management inside)
   { label: "Tickets", path: "/tickets", icon: Ticket, roles: ALL },
