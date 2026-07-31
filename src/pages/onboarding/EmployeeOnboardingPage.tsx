@@ -12,6 +12,7 @@ import {
   Result,
   Divider,
   Radio,
+  Checkbox,
 } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -116,6 +117,15 @@ export default function EmployeeOnboardingPage() {
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
 
+  // Permanent address — collected separately since employee_contacts
+  // distinguishes current vs. permanent address.
+  const [sameAsCurrent, setSameAsCurrent] = useState(true);
+  const [permAddressLine1, setPermAddressLine1] = useState("");
+  const [permAddressLine2, setPermAddressLine2] = useState("");
+  const [permCity, setPermCity] = useState("");
+  const [permState, setPermState] = useState("");
+  const [permPincode, setPermPincode] = useState("");
+
   // Emergency contact
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
@@ -219,6 +229,11 @@ export default function EmployeeOnboardingPage() {
         state,
         postalCode,
         country,
+        permAddressLine1: sameAsCurrent ? addressLine1 : permAddressLine1,
+        permAddressLine2: sameAsCurrent ? addressLine2 : permAddressLine2,
+        permCity: sameAsCurrent ? city : permCity,
+        permState: sameAsCurrent ? state : permState,
+        permPincode: sameAsCurrent ? postalCode : permPincode,
         emergencyContactName,
         emergencyContactPhone,
         emergencyContactRelation,
@@ -439,6 +454,52 @@ export default function EmployeeOnboardingPage() {
             />
           </Field>
         </Grid>
+      </Section>
+
+      <Divider />
+
+      <Section title="Permanent Address">
+        <Checkbox
+          checked={sameAsCurrent}
+          onChange={(e) => setSameAsCurrent(e.target.checked)}
+          style={{ marginBottom: 12 }}
+        >
+          Same as current address
+        </Checkbox>
+        {!sameAsCurrent && (
+          <Grid>
+            <Field label="Address Line 1">
+              <AntInput
+                value={permAddressLine1}
+                onChange={(e) => setPermAddressLine1(e.target.value)}
+              />
+            </Field>
+            <Field label="Address Line 2">
+              <AntInput
+                value={permAddressLine2}
+                onChange={(e) => setPermAddressLine2(e.target.value)}
+              />
+            </Field>
+            <Field label="City">
+              <AntInput
+                value={permCity}
+                onChange={(e) => setPermCity(e.target.value)}
+              />
+            </Field>
+            <Field label="State">
+              <AntInput
+                value={permState}
+                onChange={(e) => setPermState(e.target.value)}
+              />
+            </Field>
+            <Field label="Postal Code">
+              <AntInput
+                value={permPincode}
+                onChange={(e) => setPermPincode(e.target.value)}
+              />
+            </Field>
+          </Grid>
+        )}
       </Section>
 
       <Divider />

@@ -117,6 +117,24 @@ const statusColor: Record<string, string> = {
   EXITED: "default",
 };
 
+// Address / emergency contact / phone now live in employee_contacts, exposed
+// as a nested `contact` object on each employee row (null if the employee
+// hasn't filled it in yet). Shows the employee's current address; permanent
+// address lives in the same object for a future detail/edit view.
+function formatAddress(row: any): string {
+  const c = row.contact;
+  if (!c) return "\u2014";
+  const parts = [
+    c.addressLine1,
+    c.addressLine2,
+    c.city,
+    c.state,
+    c.pincode,
+    c.country,
+  ].filter((p) => p != null && String(p).trim() !== "");
+  return parts.length > 0 ? parts.join(", ") : "\u2014";
+}
+
 export default function EmployeesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -628,7 +646,7 @@ export default function EmployeesPage() {
     {
       title: "Address",
       key: "address",
-      render: (_: any, row: any) => row.address ?? "\u2014",
+      render: (_: any, row: any) => formatAddress(row),
     },
     {
       title: "Status",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   User,
   FileText,
@@ -15,6 +16,7 @@ import { selfService } from "../../services/selfService";
 import { attendanceService } from "../../services/attendanceService";
 import { documentService } from "../../services/documentService";
 import { letterService } from "../../services/letterService";
+import { fileService } from "../../services/fileService";
 import { apiClient } from "../../services/apiClient";
 import type { ApiResponse } from "../../utils/types";
 
@@ -323,14 +325,13 @@ export default function MyProfilePage() {
                       {d.expiryDate ?? "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <a
-                        href={d.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-indigo-600 hover:underline"
+                      <button
+                        type="button"
+                        onClick={() => fileService.openFile(d.fileUrl)}
+                        className="text-indigo-600 hover:underline bg-transparent border-0 p-0 cursor-pointer"
                       >
                         Open
-                      </a>
+                      </button>
                     </td>
                   </tr>
                 ))}
