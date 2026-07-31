@@ -237,9 +237,10 @@ export default function EmployeesPage() {
   const allRows = list.data ?? [];
 
   // Managers available as "reporting manager" when creating an EMPLOYEE or
-  // MANAGER login (a manager can report to a senior manager too).
+  // MANAGER login (a manager can report to a senior manager too, and can
+  // also report directly to a Super Admin — e.g. a Chief Executive Manager).
   const managerOptions = (allRows as ResourceRecord[])
-    .filter((r) => isManagerRow(r))
+    .filter((r) => isManagerRow(r) || isSuperAdminRow(r))
     .map((r) => ({
       value: r.id,
       label: r.employeeCode + " \u2014 " + r.firstName + " " + r.lastName,

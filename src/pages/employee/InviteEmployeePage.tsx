@@ -86,7 +86,9 @@ export default function InviteEmployeePage() {
   });
 
   // Managers available as "Reporting Manager" — same source list the classic
-  // Add Employee form uses, filtered to people whose login role is MANAGER.
+  // Add Employee form uses, filtered to people whose login role is MANAGER
+  // or SUPER_ADMIN (so a Manager can be set up to report directly to a
+  // Super Admin, e.g. a Chief Executive Manager).
   const employees = useQuery({
     queryKey: ["employees"],
     queryFn: () => resourceService.list("/employees"),
@@ -109,7 +111,10 @@ export default function InviteEmployeePage() {
     return rolesByEmail.get(em) ?? [];
   };
   const managerOptions = ((employees.data ?? []) as ResourceRecord[])
-    .filter((r) => rowRoles(r).includes("MANAGER"))
+    .filter(
+      (r) =>
+        rowRoles(r).includes("MANAGER") || rowRoles(r).includes("SUPER_ADMIN"),
+    )
     .map((r) => ({
       value: r.id,
       label: r.employeeCode + " — " + r.firstName + " " + r.lastName,
