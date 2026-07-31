@@ -156,11 +156,15 @@ export default function InviteEmployeePage() {
     [form.lastName, "Last Name"],
     [form.departmentId, "Department"],
     [form.designationId, "Designation"],
-    [form.managerId, "Reporting Manager"],
     [form.dateOfJoining, "Date of Joining"],
     [form.email, "Login Email"],
     [form.loginRole, "Create Login As"],
   ];
+  // A Super Admin sits at the top of the reporting hierarchy, so they don't
+  // need a reporting manager themselves — everyone else still does.
+  if (form.loginRole !== "SUPER_ADMIN") {
+    required.push([form.managerId, "Reporting Manager"]);
+  }
   for (const [val, label] of required) {
     if (val === undefined || val === null || String(val).trim() === "") {
       missing.push(label);
@@ -247,7 +251,13 @@ export default function InviteEmployeePage() {
             />
           </Field>
 
-          <Field label="Reporting Manager *">
+          <Field
+            label={
+              form.loginRole === "SUPER_ADMIN"
+                ? "Reporting Manager"
+                : "Reporting Manager *"
+            }
+          >
             <AntSelect
               style={{ width: "100%" }}
               showSearch
@@ -256,6 +266,7 @@ export default function InviteEmployeePage() {
               onChange={(v) => set("managerId", v)}
               placeholder="— Select manager —"
               options={managerOptions}
+              allowClear
             />
           </Field>
           <Field label="Date of Joining *">
@@ -283,6 +294,7 @@ export default function InviteEmployeePage() {
               options={[
                 { value: "EMPLOYEE", label: "Employee" },
                 { value: "MANAGER", label: "Manager" },
+                { value: "SUPER_ADMIN", label: "Super Admin" },
               ]}
             />
           </Field>
