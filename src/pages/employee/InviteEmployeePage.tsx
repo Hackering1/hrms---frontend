@@ -294,7 +294,6 @@ export default function InviteEmployeePage() {
               options={[
                 { value: "EMPLOYEE", label: "Employee" },
                 { value: "MANAGER", label: "Manager" },
-                { value: "SUPER_ADMIN", label: "Super Admin" },
               ]}
             />
           </Field>

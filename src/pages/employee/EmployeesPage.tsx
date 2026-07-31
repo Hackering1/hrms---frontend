@@ -1000,12 +1000,6 @@ export default function EmployeesPage() {
                     options={[
                       { value: "EMPLOYEE", label: "Employee" },
                       { value: "MANAGER", label: "Manager" },
-                      // Only a Super Admin may create another Super Admin login
-                      // (matches the backend's existing "hasRole('SUPER_ADMIN')"
-                      // guard for this specific role — HR/Manager still can't).
-                      ...(roles.includes("SUPER_ADMIN")
-                        ? [{ value: "SUPER_ADMIN", label: "Super Admin" }]
-                        : []),
                     ]}
                   />
                 </Field>
