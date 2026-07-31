@@ -246,6 +246,27 @@ export default function EmployeesPage() {
       label: r.employeeCode + " \u2014 " + r.firstName + " " + r.lastName,
     }));
 
+  // Existing logins (e.g. the original seeded Super Admin) that don't have an
+  // employee profile yet — used by "Link Existing Login" so you can attach a
+  // profile to an account you already log in with, instead of creating a
+  // brand-new duplicate login.
+  const linkedUserIds = new Set(
+    (allRows as ResourceRecord[])
+      .map((r) => r.userId)
+      .filter(Boolean)
+      .map((id) => String(id)),
+  );
+  const existingLoginOptions = ((users.data ?? []) as any[])
+    .filter((u) => u.isActive !== false && !linkedUserIds.has(String(u.id)))
+    .map((u) => ({
+      value: u.id,
+      label:
+        u.email +
+        (Array.isArray(u.roles) && u.roles.length
+          ? " \u2014 " + u.roles.join(", ")
+          : ""),
+    }));
+
   const rows = useMemo(() => {
     if (!managerScoped) return allRows;
     const teamIds = new Set((myTeam.data ?? []).map((m) => String(m.id)));
@@ -284,6 +305,28 @@ export default function EmployeesPage() {
       // #9: attach documents from each section against the new employee, tagged
       // with the matching category (Personal / Educational / Experience).
       const newId = resp?.id;
+
+      // "Link Existing Login": the profile was created with no new account —
+      // attach it to the login the admin picked (e.g. the original Super Admin).
+      if (
+        !editingId &&
+        form.loginRole === "EXISTING" &&
+        form.existingUserId &&
+        newId
+      ) {
+        selfService
+          .linkUser(String(newId), String(form.existingUserId))
+          .then(() => {
+            qc.invalidateQueries({ queryKey: ["employees"] });
+            toast.success("Profile linked to the existing login.");
+          })
+          .catch(() =>
+            toast.error(
+              "Employee saved, but linking the existing login failed. Try again from here, or ask an admin to link it.",
+            ),
+          );
+      }
+
       const buildDocs = (list2: DocFile[], categoryName: string) =>
         list2
           .filter((d) => d.fileUrl)
@@ -461,7 +504,11 @@ export default function EmployeesPage() {
     }
     if (!editingId) {
       if (!form.loginRole) missing.push("Create Login As");
-      if (!form.password) missing.push("Login Password");
+      if (form.loginRole === "EXISTING") {
+        if (!form.existingUserId) missing.push("Select Login to Link");
+      } else {
+        if (!form.password) missing.push("Login Password");
+      }
       if (
         (form.loginRole === "EMPLOYEE" || form.loginRole === "MANAGER") &&
         !form.managerId
@@ -539,6 +586,7 @@ export default function EmployeesPage() {
       return;
     }
 
+    const isExistingLogin = !editingId && form.loginRole === "EXISTING";
     const body: ResourceRecord = {
       ...form,
       isFresher,
@@ -546,6 +594,16 @@ export default function EmployeesPage() {
       ifscCode: form.ifscCode ?? null,
       education: education.filter((e) => e.level.trim()),
       experience: isFresher ? [] : experience.filter((e) => e.company.trim()),
+      // "Link Existing Login" attaches an already-existing account after the
+      // employee profile is created (see save.onSuccess) — it must NOT also
+      // trigger the normal new-login creation on the backend.
+      ...(isExistingLogin
+        ? {
+            loginRole: undefined,
+            password: undefined,
+            existingUserId: undefined,
+          }
+        : {}),
     };
     save.mutate(body);
   };
@@ -1000,6 +1058,12 @@ export default function EmployeesPage() {
                     options={[
                       { value: "EMPLOYEE", label: "Employee" },
                       { value: "MANAGER", label: "Manager" },
+                      // Lets a Super Admin attach a profile to an account that
+                      // already has a login (e.g. the original seeded Super
+                      // Admin) instead of creating a brand-new duplicate one.
+                      ...(roles.includes("SUPER_ADMIN")
+                        ? [{ value: "EXISTING", label: "Link Existing Login" }]
+                        : []),
                     ]}
                   />
                 </Field>
@@ -1020,12 +1084,26 @@ export default function EmployeesPage() {
                       />
                     </Field>
                   )}
-                <Field label="Login Password *">
-                  <AntInput
-                    value={form.password ?? "User@0412"}
-                    onChange={(e) => set("password", e.target.value)}
-                  />
-                </Field>
+                {!editingId && form.loginRole === "EXISTING" ? (
+                  <Field label="Select Login to Link *">
+                    <AntSelect
+                      style={{ width: "100%" }}
+                      showSearch
+                      optionFilterProp="label"
+                      value={form.existingUserId || undefined}
+                      onChange={(v) => set("existingUserId", v)}
+                      placeholder={"\u2014 Select an existing login \u2014"}
+                      options={existingLoginOptions}
+                    />
+                  </Field>
+                ) : (
+                  <Field label="Login Password *">
+                    <AntInput
+                      value={form.password ?? "User@0412"}
+                      onChange={(e) => set("password", e.target.value)}
+                    />
+                  </Field>
+                )}
               </Grid>
             </Section>
 
