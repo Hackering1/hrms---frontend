@@ -37,7 +37,7 @@ const { Title, Text } = Typography;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -267,10 +267,25 @@ export default function EmployeesPage() {
           : ""),
     }));
 
+  // Sort by the numeric part of the employee code (e.g. "TN 002" -> 2) so the
+  // table always reads in a sensible ascending order, regardless of the order
+  // rows come back from the API (insertion order, not code order).
+  const employeeCodeNum = (code: unknown): number => {
+    const m = String(code ?? "").match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+  };
+
   const rows = useMemo(() => {
-    if (!managerScoped) return allRows;
-    const teamIds = new Set((myTeam.data ?? []).map((m) => String(m.id)));
-    return allRows.filter((r) => teamIds.has(String(r.id)));
+    const base = !managerScoped
+      ? allRows
+      : allRows.filter((r) => {
+          const teamIds = new Set((myTeam.data ?? []).map((m) => String(m.id)));
+          return teamIds.has(String(r.id));
+        });
+    return [...base].sort(
+      (a, b) =>
+        employeeCodeNum(a.employeeCode) - employeeCodeNum(b.employeeCode),
+    );
   }, [allRows, managerScoped, myTeam.data]);
   const filtered = useMemo(() => {
     if (!query.trim()) return rows;
