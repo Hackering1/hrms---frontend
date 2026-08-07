@@ -29,7 +29,7 @@ const { Title, Text } = Typography;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -282,7 +282,7 @@ export default function FormattedLetterPage() {
         <Card
           title={
             <Space>
-              <FileTextOutlined style={{ color: "#0d9488" }} />
+              <FileTextOutlined style={{ color: "#00a8f0" }} />
               Letter Details
             </Space>
           }
@@ -295,10 +295,27 @@ export default function FormattedLetterPage() {
                   value={employeeId || undefined}
                   onChange={(v) => setEmployeeId(v)}
                   placeholder="— Select employee —"
-                  options={(employees.data ?? []).map((e: ResourceRecord) => ({
-                    value: String(e.id),
-                    label: `${e.firstName} ${e.lastName} (${e.employeeCode})`,
-                  }))}
+                  showSearch
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    String(option?.label ?? "")
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  // Offer/Appointment letters: show INVITED candidates (still
+                  // mid-onboarding) together with already-saved/ACTIVE employees
+                  // — i.e. everyone except soft-deleted rows. Experience/Relieving
+                  // keeps showing everyone for now too.
+                  options={(employees.data ?? [])
+                    .filter(
+                      (e: ResourceRecord) =>
+                        e.onboardingStatus === "INVITED" ||
+                        e.onboardingStatus === "ACTIVE",
+                    )
+                    .map((e: ResourceRecord) => ({
+                      value: String(e.id),
+                      label: `${e.firstName} ${e.lastName} (${e.employeeCode})`,
+                    }))}
                 />
               </Field>
             </Col>
@@ -506,7 +523,7 @@ export default function FormattedLetterPage() {
           <Card
             title={
               <Space>
-                <FileTextOutlined style={{ color: "#0d9488" }} />
+                <FileTextOutlined style={{ color: "#00a8f0" }} />
                 Salary Structure
               </Space>
             }
