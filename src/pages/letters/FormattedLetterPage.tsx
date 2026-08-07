@@ -48,8 +48,8 @@ type SalaryKey =
   | "grossA"
   | "pfEmployerM"
   | "pfEmployerA"
-  | "pfAdminM"
-  | "pfAdminA"
+  | "insuranceM"
+  | "insuranceA"
   | "gratuityM"
   | "gratuityA"
   | "employerCostM"
@@ -67,19 +67,27 @@ type SalaryKey =
 
 const salaryRows: { label: string; m: SalaryKey; a: SalaryKey }[] = [
   { label: "Basic Salary", m: "basicM", a: "basicA" },
-  { label: "HRA", m: "hraM", a: "hraA" },
-  { label: "LTA", m: "ltaM", a: "ltaA" },
+  { label: "HRA (40% of Basic)", m: "hraM", a: "hraA" },
+  { label: "Leave Travel Allowance", m: "ltaM", a: "ltaA" },
   { label: "Special Allowance", m: "specialM", a: "specialA" },
-  { label: "Gross Salary (A)", m: "grossM", a: "grossA" },
-  { label: "PF (Employer)", m: "pfEmployerM", a: "pfEmployerA" },
-  { label: "PF- Admin Charges", m: "pfAdminM", a: "pfAdminA" },
-  { label: "Gratuity", m: "gratuityM", a: "gratuityA" },
-  { label: "Total Employer Cost", m: "employerCostM", a: "employerCostA" },
-  { label: "Total CTC C=(A+B)", m: "ctcMonthlyTotal", a: "ctcAnnualTotal" },
-  { label: "PF (Employee)", m: "pfEmployeeM", a: "pfEmployeeA" },
-  { label: "Professional Tax", m: "ptM", a: "ptA" },
+  { label: "Gross Salary (E)", m: "grossM", a: "grossA" },
+  { label: "Employee PF (Fixed)", m: "pfEmployeeM", a: "pfEmployeeA" },
+  { label: "Professional Tax (KA)", m: "ptM", a: "ptA" },
   { label: "Total Deductions (D)", m: "deductionsM", a: "deductionsA" },
-  { label: "Net Take-Home (A-D)", m: "netM", a: "netA" },
+  { label: "Net Take Home (Before TDS)", m: "netM", a: "netA" },
+  { label: "Employer PF (Fixed)", m: "pfEmployerM", a: "pfEmployerA" },
+  { label: "Gratuity (4.81% of Basic)", m: "gratuityM", a: "gratuityA" },
+  {
+    label: "Group Health/Accident Insurance",
+    m: "insuranceM",
+    a: "insuranceA",
+  },
+  { label: "Total Employer Cost", m: "employerCostM", a: "employerCostA" },
+  {
+    label: "Total Cost to Company (CTC)",
+    m: "ctcMonthlyTotal",
+    a: "ctcAnnualTotal",
+  },
 ];
 
 // Indian-style number formatting (e.g. 312780 -> "3,12,780").
@@ -218,11 +226,25 @@ export default function FormattedLetterPage() {
     setSalary((s) => ({ ...s, [k]: v }));
 
   /**
-   * Auto-fill the entire salary structure from the Annual CTC, using TechNext's
-   * standard breakup (matches the real letters exactly):
-   *   Gross = CTC (simple structure), Basic = Gross / 1.5985 (~62.56%),
-   *   HRA = 40% of Basic, LTA = 5% of Basic, Special = remainder,
-   *   Professional Tax = ₹200/mo (₹2,400/yr), Net = Gross − PT.
+   * Auto-fill the salary structure from Annual CTC + a manually-entered Basic
+   * Salary (HR types Basic into the table first, then clicks this).
+   *
+   * Only formulas explicitly confirmed are applied:
+   *   HRA = 40% of Basic
+   *   Gratuity = 4.81% of Basic
+   *   Employer PF = ₹1,800/mo fixed (₹21,600/yr)
+   *   Employee PF = ₹1,800/mo fixed (₹21,600/yr)
+   *   Professional Tax (KA) = ₹200/mo fixed (₹2,400/yr)
+   *   Total Employer Cost = Employer PF + Gratuity + Group Insurance
+   *   Gross Salary (E) = CTC − Total Employer Cost
+   *   Special Allowance = Gross − Basic − HRA − LTA (remainder)
+   *   Total Deductions (D) = Employee PF + Professional Tax
+   *   Net Take Home = Gross − Total Deductions
+   *   Total CTC = the entered target CTC
+   *
+   * Leave Travel Allowance and Group Health/Accident Insurance have no
+   * confirmed formula — they're left as whatever is already typed in those
+   * cells (0 if empty), never invented or overwritten with a guessed value.
    */
   const autoFillSalary = () => {
     const ctc = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
@@ -230,36 +252,73 @@ export default function FormattedLetterPage() {
       toast.error("Enter a valid Annual CTC first.");
       return;
     }
-    const grossA = ctc;
-    const basicA = Math.round(grossA / 1.5985);
-    const hraA = Math.round(basicA * 0.4);
-    const ltaA = Math.round(basicA * 0.05);
-    const specialA = grossA - basicA - hraA - ltaA;
-    const ptA = 2400;
-    const netA = grossA - ptA;
+    const basicFromAnnual = Number(
+      (salary.basicA || "").replace(/[^\d.]/g, ""),
+    );
+    const basicFromMonthly = Number(
+      (salary.basicM || "").replace(/[^\d.]/g, ""),
+    );
+    const basicA = basicFromAnnual || basicFromMonthly * 12;
+    if (!basicA || basicA <= 0) {
+      toast.error(
+        "Enter Basic Salary in the table first, then auto-fill the rest.",
+      );
+      return;
+    }
 
-    const m = (a: number) => inr(a / 12);
+    const basicM = Math.round(basicA / 12);
+    const hraM = Math.round(basicM * 0.4);
+    const gratuityM = Math.round(basicM * 0.0481);
+    const pfEmployerM = 1800;
+    const pfEmployeeM = 1800;
+    const ptM = 200;
+    // Not overwritten with an invented formula — keep whatever is already
+    // there (0 if the cell is still empty).
+    const ltaM = Math.round(
+      (Number((salary.ltaA || "").replace(/[^\d.]/g, "")) || 0) / 12,
+    );
+    const insuranceM = Math.round(
+      (Number((salary.insuranceA || "").replace(/[^\d.]/g, "")) || 0) / 12,
+    );
+
+    const employerCostM = pfEmployerM + gratuityM + insuranceM;
+    const grossM = Math.round(ctc / 12) - employerCostM;
+    const specialM = grossM - basicM - hraM - ltaM;
+    const deductionsM = pfEmployeeM + ptM;
+    const netM = grossM - deductionsM;
+
+    const a = (mVal: number) => mVal * 12;
     setSalary({
-      basicM: m(basicA),
-      basicA: inr(basicA),
-      hraM: m(hraA),
-      hraA: inr(hraA),
-      ltaM: m(ltaA),
-      ltaA: inr(ltaA),
-      specialM: m(specialA),
-      specialA: inr(specialA),
-      grossM: m(grossA),
-      grossA: inr(grossA),
-      ctcMonthlyTotal: m(grossA),
-      ctcAnnualTotal: inr(grossA),
-      ptM: inr(200),
-      ptA: inr(ptA),
-      deductionsM: inr(200),
-      deductionsA: inr(ptA),
-      netM: m(netA),
-      netA: inr(netA),
+      basicM: inr(basicM),
+      basicA: inr(a(basicM)),
+      hraM: inr(hraM),
+      hraA: inr(a(hraM)),
+      ltaM: inr(ltaM),
+      ltaA: inr(a(ltaM)),
+      specialM: inr(specialM),
+      specialA: inr(a(specialM)),
+      grossM: inr(grossM),
+      grossA: inr(a(grossM)),
+      pfEmployeeM: inr(pfEmployeeM),
+      pfEmployeeA: inr(a(pfEmployeeM)),
+      ptM: inr(ptM),
+      ptA: inr(a(ptM)),
+      deductionsM: inr(deductionsM),
+      deductionsA: inr(a(deductionsM)),
+      netM: inr(netM),
+      netA: inr(a(netM)),
+      pfEmployerM: inr(pfEmployerM),
+      pfEmployerA: inr(a(pfEmployerM)),
+      gratuityM: inr(gratuityM),
+      gratuityA: inr(a(gratuityM)),
+      insuranceM: inr(insuranceM),
+      insuranceA: inr(a(insuranceM)),
+      employerCostM: inr(employerCostM),
+      employerCostA: inr(a(employerCostM)),
+      ctcMonthlyTotal: inr(Math.round(ctc / 12)),
+      ctcAnnualTotal: inr(ctc),
     });
-    toast.success("Salary structure auto-filled from CTC");
+    toast.success("Salary structure auto-filled from CTC + Basic");
   };
 
   const gen = useMutation({
@@ -536,6 +595,12 @@ export default function FormattedLetterPage() {
                 >
                   Auto-fill salary breakup from CTC
                 </AntButton>
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Enter Basic Salary in the table below first, then click
+                    auto-fill.
+                  </Text>
+                </div>
               </Col>
             )}
             {isServiceLetter && (
