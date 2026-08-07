@@ -7,7 +7,6 @@ import {
   Button as AntButton,
   Input as AntInput,
   Select as AntSelect,
-  AutoComplete as AntAutoComplete,
   Card,
   Row,
   Col,
@@ -99,6 +98,10 @@ export default function FormattedLetterPage() {
   // has been sent) leaves employeeId blank and is sent as employeeName only.
   const [employeeId, setEmployeeId] = useState("");
   const [employeeNameInput, setEmployeeNameInput] = useState("");
+  // Raw text currently typed into the dropdown's search box (separate from
+  // the committed employeeNameInput above) — used only to build the "use
+  // this as a new candidate" suggestion row while the user is typing.
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [letterType, setLetterType] = useState<
     "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE"
   >("OFFER");
@@ -138,10 +141,12 @@ export default function FormattedLetterPage() {
   // field — whether that resolved to a saved/invited employee or not.
   const employeeName = employeeNameInput.trim();
 
-  // Employee field options, grouped into "Saved Employees" (ACTIVE,
+  // Employee dropdown options, grouped into "Saved Employees" (ACTIVE,
   // already in the system) and "Invited (Onboarding)" (invite sent, still
-  // mid-onboarding). Anything the user types that doesn't match either
-  // group is treated as a brand-new candidate not yet in the system at all.
+  // mid-onboarding). A third, dynamic group offers "use this as a new
+  // candidate" whenever the typed search text doesn't match anyone already
+  // listed — that's how a name like "GuruPrakash", not in the system at
+  // all, still gets used to generate a letter.
   const toEmpOption = (e: ResourceRecord) => {
     const name = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim();
     return {
@@ -157,6 +162,30 @@ export default function FormattedLetterPage() {
   const invitedEmpOptions = (employees.data ?? [])
     .filter((e: ResourceRecord) => e.onboardingStatus === "INVITED")
     .map(toEmpOption);
+
+  const knownNames = new Set(
+    [...savedEmpOptions, ...invitedEmpOptions].map((o) =>
+      o.empName.toLowerCase(),
+    ),
+  );
+  const trimmedSearch = employeeSearch.trim();
+  const showAddNew =
+    trimmedSearch.length > 0 && !knownNames.has(trimmedSearch.toLowerCase());
+
+  // Keeps the field showing the previously-committed manual name (if any)
+  // even when the dropdown is closed and nothing is currently being typed.
+  const manualOption =
+    !employeeId && employeeNameInput
+      ? [
+          {
+            value: "__manual__",
+            label: employeeNameInput,
+            empId: "",
+            empName: employeeNameInput,
+          },
+        ]
+      : [];
+
   const employeeOptions = [
     ...(savedEmpOptions.length
       ? [{ label: "Saved Employees", options: savedEmpOptions }]
@@ -164,6 +193,23 @@ export default function FormattedLetterPage() {
     ...(invitedEmpOptions.length
       ? [{ label: "Invited (Onboarding)", options: invitedEmpOptions }]
       : []),
+    ...(showAddNew
+      ? [
+          {
+            label: "New Candidate",
+            options: [
+              {
+                value: "__add_new__",
+                label: `Use "${trimmedSearch}" (not in system)`,
+                empId: "",
+                empName: trimmedSearch,
+              },
+            ],
+          },
+        ]
+      : manualOption.length
+        ? [{ label: "New Candidate", options: manualOption }]
+        : []),
   ];
 
   const setMetaField = (k: string, v: string) =>
@@ -328,32 +374,35 @@ export default function FormattedLetterPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Field label="Employee">
-                <AntAutoComplete
+                <AntSelect
                   style={{ width: "100%" }}
-                  value={employeeNameInput}
+                  showSearch
+                  value={
+                    employeeId
+                      ? employeeId
+                      : employeeNameInput
+                        ? "__manual__"
+                        : undefined
+                  }
                   options={employeeOptions}
+                  searchValue={employeeSearch}
+                  onSearch={(text) => setEmployeeSearch(text)}
                   filterOption={(input, option: any) =>
-                    !option?.options &&
                     String(option?.label ?? "")
                       .toLowerCase()
                       .includes(input.toLowerCase())
                   }
-                  onSelect={(_value, option: any) => {
+                  onChange={(_value, option: any) => {
                     setEmployeeNameInput(option.empName);
                     setEmployeeId(option.empId);
-                  }}
-                  onChange={(value) => {
-                    setEmployeeNameInput(value);
-                    // Typing rather than picking from the list means this no
-                    // longer matches a saved/invited employee — treat it as
-                    // a brand-new candidate not yet in the system at all.
-                    setEmployeeId("");
+                    setEmployeeSearch("");
                   }}
                   placeholder="Select a saved/invited employee, or type a new candidate's name"
                 />
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Pick from Saved Employees or Invited (Onboarding), or just
-                  type a name for a candidate who isn't in the system yet.
+                  Pick from Saved Employees or Invited (Onboarding), or type a
+                  name and choose "Use ... (not in system)" for a candidate who
+                  isn't in the system yet.
                 </Text>
               </Field>
             </Col>
