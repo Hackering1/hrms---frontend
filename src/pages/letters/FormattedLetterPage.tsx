@@ -7,6 +7,7 @@ import {
   Button as AntButton,
   Input as AntInput,
   Select as AntSelect,
+  AutoComplete as AntAutoComplete,
   Card,
   Row,
   Col,
@@ -92,7 +93,12 @@ function inr(n: number): string {
 }
 
 export default function FormattedLetterPage() {
+  // employeeId is set only when the text in the field matches a saved or
+  // invited employee picked from the dropdown. Free-typed text (a candidate
+  // who isn't in the system at all yet — e.g. pre-offer, before any invite
+  // has been sent) leaves employeeId blank and is sent as employeeName only.
   const [employeeId, setEmployeeId] = useState("");
+  const [employeeNameInput, setEmployeeNameInput] = useState("");
   const [letterType, setLetterType] = useState<
     "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE"
   >("OFFER");
@@ -128,9 +134,37 @@ export default function FormattedLetterPage() {
   const selectedEmp = (employees.data ?? []).find(
     (e: ResourceRecord) => String(e.id) === employeeId,
   );
-  const employeeName = selectedEmp
-    ? `${selectedEmp.firstName ?? ""} ${selectedEmp.lastName ?? ""}`.trim()
-    : "";
+  // The name that goes on the letter: whatever is typed/selected in the
+  // field — whether that resolved to a saved/invited employee or not.
+  const employeeName = employeeNameInput.trim();
+
+  // Employee field options, grouped into "Saved Employees" (ACTIVE,
+  // already in the system) and "Invited (Onboarding)" (invite sent, still
+  // mid-onboarding). Anything the user types that doesn't match either
+  // group is treated as a brand-new candidate not yet in the system at all.
+  const toEmpOption = (e: ResourceRecord) => {
+    const name = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim();
+    return {
+      value: String(e.id),
+      label: `${name} (${e.employeeCode ?? "—"})`,
+      empId: String(e.id),
+      empName: name,
+    };
+  };
+  const savedEmpOptions = (employees.data ?? [])
+    .filter((e: ResourceRecord) => e.onboardingStatus === "ACTIVE")
+    .map(toEmpOption);
+  const invitedEmpOptions = (employees.data ?? [])
+    .filter((e: ResourceRecord) => e.onboardingStatus === "INVITED")
+    .map(toEmpOption);
+  const employeeOptions = [
+    ...(savedEmpOptions.length
+      ? [{ label: "Saved Employees", options: savedEmpOptions }]
+      : []),
+    ...(invitedEmpOptions.length
+      ? [{ label: "Invited (Onboarding)", options: invitedEmpOptions }]
+      : []),
+  ];
 
   const setMetaField = (k: string, v: string) =>
     setMeta((m) => ({ ...m, [k]: v }));
@@ -185,7 +219,9 @@ export default function FormattedLetterPage() {
   const gen = useMutation({
     mutationFn: async () => {
       const payload = {
-        employeeId,
+        // "" (unmatched/typed name) must go as null, not "" — the backend
+        // parses this as a UUID and an empty string would fail to parse.
+        employeeId: employeeId || null,
         employeeName,
         letterType,
         ...meta,
@@ -231,9 +267,11 @@ export default function FormattedLetterPage() {
   const contractDurationOk =
     meta.employmentType !== "CONTRACT" || !!meta.contractDuration;
 
+  // A typed-but-unmatched name is just as valid as a picked employee — only
+  // the name text is actually required to generate a letter.
   const canGenerate = isServiceLetter
-    ? !!employeeId && !!meta.designation && !!meta.employmentEndDate
-    : !!employeeId &&
+    ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
+    : !!employeeName &&
       !!meta.designation &&
       !!meta.ctcAnnual &&
       contractDurationOk;
@@ -290,33 +328,33 @@ export default function FormattedLetterPage() {
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={12}>
               <Field label="Employee">
-                <AntSelect
+                <AntAutoComplete
                   style={{ width: "100%" }}
-                  value={employeeId || undefined}
-                  onChange={(v) => setEmployeeId(v)}
-                  placeholder="— Select employee —"
-                  showSearch
-                  optionFilterProp="label"
-                  filterOption={(input, option) =>
+                  value={employeeNameInput}
+                  options={employeeOptions}
+                  filterOption={(input, option: any) =>
+                    !option?.options &&
                     String(option?.label ?? "")
                       .toLowerCase()
                       .includes(input.toLowerCase())
                   }
-                  // Offer/Appointment letters: show INVITED candidates (still
-                  // mid-onboarding) together with already-saved/ACTIVE employees
-                  // — i.e. everyone except soft-deleted rows. Experience/Relieving
-                  // keeps showing everyone for now too.
-                  options={(employees.data ?? [])
-                    .filter(
-                      (e: ResourceRecord) =>
-                        e.onboardingStatus === "INVITED" ||
-                        e.onboardingStatus === "ACTIVE",
-                    )
-                    .map((e: ResourceRecord) => ({
-                      value: String(e.id),
-                      label: `${e.firstName} ${e.lastName} (${e.employeeCode})`,
-                    }))}
+                  onSelect={(_value, option: any) => {
+                    setEmployeeNameInput(option.empName);
+                    setEmployeeId(option.empId);
+                  }}
+                  onChange={(value) => {
+                    setEmployeeNameInput(value);
+                    // Typing rather than picking from the list means this no
+                    // longer matches a saved/invited employee — treat it as
+                    // a brand-new candidate not yet in the system at all.
+                    setEmployeeId("");
+                  }}
+                  placeholder="Select a saved/invited employee, or type a new candidate's name"
                 />
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Pick from Saved Employees or Invited (Onboarding), or just
+                  type a name for a candidate who isn't in the system yet.
+                </Text>
               </Field>
             </Col>
             <Col xs={24} sm={12}>
@@ -572,7 +610,7 @@ export default function FormattedLetterPage() {
           )}
           {!canGenerate && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Select an employee, designation, and CTC to enable.
+              Enter an employee name, designation, and CTC to enable.
             </Text>
           )}
         </div>
