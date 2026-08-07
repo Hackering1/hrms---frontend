@@ -1,5 +1,6 @@
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import dayjs from "dayjs";
 import {
   ConfigProvider,
   Row,
@@ -31,12 +32,16 @@ import { managerService } from "../services/managerService";
 import { useRole } from "../hooks/useRole";
 
 const { Title, Text } = Typography;
-const TODAY = new Date().toISOString().slice(0, 10);
+// Local calendar date (not UTC) — new Date().toISOString() always converts
+// to UTC first, which is the wrong day during India's midnight–5:30 AM IST
+// window (backend correctly runs in IST; this was silently mismatched with
+// it, showing yesterday's attendance as "today's" during that window).
+const TODAY = dayjs().format("YYYY-MM-DD");
 const YEAR = new Date().getFullYear();
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 12,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -144,7 +149,7 @@ function RingCard({
   return (
     <Card>
       <Space align="center" size={16}>
-        <Progress type="circle" percent={pct} size={56} strokeColor="#0d9488" />
+        <Progress type="circle" percent={pct} size={56} strokeColor="#00a8f0" />
         <div>
           <Text type="secondary" style={{ fontSize: 12 }}>
             {label}
@@ -227,7 +232,7 @@ function QuickActions({
                   textAlign: "center",
                 }}
               >
-                <div style={{ color: "#0d9488", marginBottom: 4 }}>
+                <div style={{ color: "#00a8f0", marginBottom: 4 }}>
                   {qa.icon}
                 </div>
                 <Text style={{ fontSize: 11 }}>{qa.label}</Text>
@@ -340,7 +345,7 @@ function EmployeeHome() {
             to: "/my-profile",
             icon: <UserOutlined />,
             label: "My Profile",
-            color: "#0d9488",
+            color: "#00a8f0",
             bg: "#f0fdfa",
           },
         ]}
@@ -499,7 +504,7 @@ function ManagerHome() {
             to: "/manager",
             icon: <UsergroupAddOutlined />,
             label: "My Team",
-            color: "#0d9488",
+            color: "#00a8f0",
             bg: "#f0fdfa",
           },
           {
@@ -652,7 +657,7 @@ function AdminHome() {
             to: "/employees",
             icon: <TeamOutlined />,
             label: "Employees",
-            color: "#0d9488",
+            color: "#00a8f0",
             bg: "#f0fdfa",
           },
           {
@@ -687,7 +692,7 @@ function AdminHome() {
             to: "/manager",
             icon: <UsergroupAddOutlined />,
             label: "Manager Portal",
-            color: "#0d9488",
+            color: "#00a8f0",
             bg: "#f0fdfa",
           },
           {

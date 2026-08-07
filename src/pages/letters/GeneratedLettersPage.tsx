@@ -30,7 +30,7 @@ const { Title, Text } = Typography;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -42,9 +42,7 @@ export default function GeneratedLettersPage() {
   const managerScoped = isManager && !isSuperAdmin && !isHr;
   const [employeeId, setEmployeeId] = useState("");
   const [templateId, setTemplateId] = useState<number | "">("");
-  const [letterDate, setLetterDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [letterDate, setLetterDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [previewText, setPreviewText] = useState<string | null>(null);
 
   const me = useQuery({

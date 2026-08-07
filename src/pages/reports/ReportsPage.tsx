@@ -35,7 +35,7 @@ const YEAR = new Date().getFullYear();
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -387,7 +387,7 @@ function Breakdown({
                 <Progress
                   percent={Math.round((count / max) * 100)}
                   showInfo={false}
-                  strokeColor="#0d9488"
+                  strokeColor="#00a8f0"
                   size="small"
                 />
               </div>
@@ -560,7 +560,7 @@ function AdminReport() {
 }
 
 function CompanyReport() {
-  const [attDate, setAttDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attDate, setAttDate] = useState(dayjs().format("YYYY-MM-DD"));
 
   const employees = useQuery({
     queryKey: ["report-employees"],
