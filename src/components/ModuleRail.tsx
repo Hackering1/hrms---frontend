@@ -55,9 +55,12 @@ export default function ModuleRail({
                   ? "text-white"
                   : "text-[var(--nav-text)] hover:bg-white/5 hover:text-white"
               }`}
-              style={
-                isActive ? { background: "var(--nav-active-bg)" } : undefined
-              }
+              style={{
+                ...(isActive ? { background: "var(--nav-active-bg)" } : {}),
+                borderLeft: isActive
+                  ? "3px solid var(--accent)"
+                  : "3px solid transparent",
+              }}
             >
               <Icon
                 size={17}

@@ -26,6 +26,7 @@ import {
   UsergroupAddOutlined,
   BarChartOutlined,
   UserOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { selfService } from "../services/selfService";
 import { attendanceService } from "../services/attendanceService";
@@ -119,23 +120,52 @@ function StatCard({
   value,
   hint,
   warn,
+  icon,
 }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
   warn?: boolean;
+  icon?: React.ReactNode;
 }) {
   return (
-    <Card>
-      <div style={{ fontSize: 12, color: warn ? "#d97706" : "#64748b" }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4 }}>{value}</div>
-      {hint && (
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {hint}
-        </Text>
-      )}
+    <Card
+      className="card-hover"
+      style={{ borderLeft: `3px solid ${warn ? "#d97706" : "#00a8f0"}` }}
+    >
+      <Space align="start" size={10}>
+        {icon && (
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: warn ? "#fef3c7" : "#e6f7ff",
+              color: warn ? "#d97706" : "#00a8f0",
+              fontSize: 15,
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </div>
+        )}
+        <div>
+          <div style={{ fontSize: 12, color: warn ? "#d97706" : "#64748b" }}>
+            {label}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4 }}>
+            {value}
+          </div>
+          {hint && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {hint}
+            </Text>
+          )}
+        </div>
+      </Space>
     </Card>
   );
 }
@@ -145,17 +175,20 @@ function RingCard({
   pct,
   valueLabel,
   onClick,
+  footerActionLabel,
 }: {
   label: string;
   pct: number;
   valueLabel: string;
   onClick?: () => void;
+  footerActionLabel?: string;
 }) {
   return (
     <Card
       onClick={onClick}
       style={onClick ? { cursor: "pointer" } : undefined}
       className={onClick ? "card-hover" : undefined}
+      styles={{ body: { paddingBottom: footerActionLabel ? 8 : 24 } }}
     >
       <Space align="center" size={16}>
         <Progress type="circle" percent={pct} size={56} strokeColor="#00a8f0" />
@@ -166,6 +199,19 @@ function RingCard({
           <div style={{ fontWeight: 600 }}>{valueLabel}</div>
         </div>
       </Space>
+      {footerActionLabel && (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 8,
+            borderTop: "1px solid #f0f0f0",
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#00a8f0" }}>
+            {footerActionLabel} &rarr;
+          </Text>
+        </div>
+      )}
     </Card>
   );
 }
@@ -234,9 +280,11 @@ function QuickActions({
           <Col span={24 / actions.length} key={qa.label}>
             <Link to={qa.to}>
               <div
+                className="card-hover"
                 style={{
-                  border: "1px solid #e5e9e9",
-                  borderRadius: 8,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
                   padding: 12,
                   textAlign: "center",
                 }}
@@ -312,6 +360,7 @@ function EmployeeHome() {
             label="Leave balance"
             value={totalBal}
             hint="days available"
+            icon={<CalendarOutlined />}
           />
         </Col>
         <Col xs={12} lg={6}>
@@ -320,10 +369,16 @@ function EmployeeHome() {
             value={myPending.length}
             hint="awaiting approval"
             warn={myPending.length > 0}
+            icon={<ExclamationCircleOutlined />}
           />
         </Col>
         <Col xs={12} lg={6}>
-          <StatCard label="This year" value={YEAR} hint="leave year" />
+          <StatCard
+            label="This year"
+            value={YEAR}
+            hint="leave year"
+            icon={<CalendarOutlined />}
+          />
         </Col>
       </Row>
 
@@ -492,10 +547,16 @@ function ManagerHome() {
             label="My team"
             value={teamList.length}
             hint="direct reports"
+            icon={<TeamOutlined />}
           />
         </Col>
         <Col xs={12} lg={6}>
-          <StatCard label="On leave" value={onLeave} hint="today" />
+          <StatCard
+            label="On leave"
+            value={onLeave}
+            hint="today"
+            icon={<CalendarOutlined />}
+          />
         </Col>
         <Col xs={12} lg={6}>
           <StatCard
@@ -503,6 +564,7 @@ function ManagerHome() {
             value={teamPending.length}
             hint="waiting on you"
             warn={teamPending.length > 0}
+            icon={<ExclamationCircleOutlined />}
           />
         </Col>
       </Row>
@@ -660,25 +722,24 @@ function AdminHome() {
             pct={pct}
             valueLabel={present + "/" + empList.length + " present"}
             onClick={() => setPresentModalOpen(true)}
+            footerActionLabel="View Present Employees"
           />
-          <AntButton
-            type="link"
-            size="small"
-            style={{ padding: "4px 0" }}
-            onClick={() => setPresentModalOpen(true)}
-          >
-            View Present Employees
-          </AntButton>
         </Col>
         <Col xs={12} lg={6}>
           <StatCard
             label="Employees"
             value={empList.length}
             hint="total headcount"
+            icon={<TeamOutlined />}
           />
         </Col>
         <Col xs={12} lg={6}>
-          <StatCard label="On leave" value={onLeave} hint="today" />
+          <StatCard
+            label="On leave"
+            value={onLeave}
+            hint="today"
+            icon={<CalendarOutlined />}
+          />
         </Col>
         <Col xs={12} lg={6}>
           <StatCard
@@ -686,6 +747,7 @@ function AdminHome() {
             value={pendingCount}
             hint="need approval"
             warn={pendingCount > 0}
+            icon={<ExclamationCircleOutlined />}
           />
         </Col>
       </Row>
