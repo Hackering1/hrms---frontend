@@ -47,7 +47,7 @@ const { TextArea } = AntInput;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -463,11 +463,18 @@ export default function AttendancePage() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
           }}
         >
-          <Title level={2} style={{ margin: 0 }}>
-            Attendance
-          </Title>
+          <div>
+            <Title level={2} style={{ margin: 0 }}>
+              Attendance
+            </Title>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Check in, check out, and review attendance history.
+            </Text>
+          </div>
           <Segmented
             value={viewMode}
             onChange={(v) => setViewMode(v as "list" | "calendar")}
@@ -489,15 +496,23 @@ export default function AttendancePage() {
         {/* Check-in / Check-out card */}
         <Card>
           <Space wrap align="end" size="middle">
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                minWidth: 220,
+                maxWidth: "100%",
+              }}
+            >
               <Text style={{ fontSize: 13, fontWeight: 500 }}>Employee</Text>
               {ownOnly ? (
                 <div
                   style={{
-                    border: "1px solid #e5e9e9",
-                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius)",
                     padding: "8px 12px",
-                    background: "#f8fafc",
+                    background: "var(--surface-2)",
                     minWidth: 220,
                   }}
                 >
@@ -511,7 +526,7 @@ export default function AttendancePage() {
                 </div>
               ) : (
                 <AntSelect
-                  style={{ width: 260 }}
+                  style={{ width: "100%", minWidth: 220, maxWidth: 320 }}
                   value={employeeId || undefined}
                   onChange={(v) => setEmployeeId(v)}
                   placeholder="— Select —"
@@ -555,7 +570,7 @@ export default function AttendancePage() {
                 flexWrap: "wrap",
                 alignItems: "center",
                 gap: 12,
-                background: "#f8fafc",
+                background: "var(--surface-2)",
                 borderRadius: 8,
                 padding: "12px 16px",
               }}
@@ -603,7 +618,7 @@ export default function AttendancePage() {
           <Card
             title={
               <Space>
-                <TeamOutlined style={{ color: "#0d9488" }} />
+                <TeamOutlined style={{ color: "#00a8f0" }} />
                 Mark Attendance for All
                 <Tag color="blue">Super Admin</Tag>
               </Space>
@@ -666,7 +681,7 @@ export default function AttendancePage() {
               columns={bulkColumns}
               dataSource={allEmployees}
               pagination={false}
-              scroll={{ y: 240 }}
+              scroll={{ x: true, y: 240 }}
               rowSelection={{
                 selectedRowKeys: bulkSelected,
                 onChange: (keys) => setBulkSelected(keys as string[]),
@@ -708,7 +723,11 @@ export default function AttendancePage() {
                   const running = isToday && r.checkInTime && !r.checkOutTime;
                   return (
                     <Col xs={12} sm={8} lg={24 / 5} key={r.id}>
-                      <Card size="small" style={{ textAlign: "center" }}>
+                      <Card
+                        size="small"
+                        className="card-hover"
+                        style={{ textAlign: "center" }}
+                      >
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           {new Date(r.attendanceDate).toLocaleDateString(
                             undefined,
@@ -798,6 +817,7 @@ export default function AttendancePage() {
                   columns={historyColumns}
                   dataSource={rows}
                   pagination={{ pageSize: 10 }}
+                  scroll={{ x: true }}
                 />
               )}
             </Card>
@@ -826,6 +846,7 @@ export default function AttendancePage() {
                   rowKey={(r: any) => r.id}
                   dataSource={myReg.data ?? []}
                   pagination={{ pageSize: 5 }}
+                  scroll={{ x: true }}
                   columns={[
                     {
                       title: "Date",
