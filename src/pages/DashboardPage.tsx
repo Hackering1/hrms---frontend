@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
@@ -14,6 +15,8 @@ import {
   Empty,
   Space,
   Tag,
+  Modal,
+  Table,
 } from "antd";
 import {
   TeamOutlined,
@@ -141,13 +144,19 @@ function RingCard({
   label,
   pct,
   valueLabel,
+  onClick,
 }: {
   label: string;
   pct: number;
   valueLabel: string;
+  onClick?: () => void;
 }) {
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      style={onClick ? { cursor: "pointer" } : undefined}
+      className={onClick ? "card-hover" : undefined}
+    >
       <Space align="center" size={16}>
         <Progress type="circle" percent={pct} size={56} strokeColor="#00a8f0" />
         <div>
@@ -619,6 +628,27 @@ function AdminHome() {
     return e ? e.firstName + " " + e.lastName : "Employee";
   };
 
+  const [presentModalOpen, setPresentModalOpen] = useState(false);
+  // Built entirely from data already fetched above for the existing present
+  // count (empList + attQ) — no new API call, no new endpoint.
+  const presentEmployeesToday = empList
+    .map((e, i) => {
+      const rec = ((attQ[i]?.data as any[]) ?? []).find(
+        (a: any) => a.attendanceDate === TODAY && a.status === "PRESENT",
+      );
+      if (!rec) return null;
+      return {
+        key: String(e.id),
+        name: `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || "Employee",
+        code: e.employeeCode ?? "-",
+        checkInTime: rec.checkInTime
+          ? dayjs(rec.checkInTime).format("hh:mm A")
+          : "-",
+        manager: e.reportingManagerName || "Not Assigned",
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <Greeting subtitle="Here's what's happening at TechNext today" />
@@ -629,7 +659,16 @@ function AdminHome() {
             label="Today's attendance"
             pct={pct}
             valueLabel={present + "/" + empList.length + " present"}
+            onClick={() => setPresentModalOpen(true)}
           />
+          <AntButton
+            type="link"
+            size="small"
+            style={{ padding: "4px 0" }}
+            onClick={() => setPresentModalOpen(true)}
+          >
+            View Present Employees
+          </AntButton>
         </Col>
         <Col xs={12} lg={6}>
           <StatCard
@@ -768,6 +807,35 @@ function AdminHome() {
           />
         </Col>
       </Row>
+
+      <Modal
+        title="Present Employees — Today"
+        open={presentModalOpen}
+        onCancel={() => setPresentModalOpen(false)}
+        footer={null}
+        width={720}
+      >
+        <Table
+          size="small"
+          rowKey="key"
+          dataSource={presentEmployeesToday}
+          pagination={false}
+          scroll={{ x: true }}
+          locale={{
+            emptyText: "No employees are currently marked present today.",
+          }}
+          columns={[
+            { title: "Employee Name", dataIndex: "name", key: "name" },
+            { title: "Employee ID", dataIndex: "code", key: "code" },
+            {
+              title: "Check-in Time",
+              dataIndex: "checkInTime",
+              key: "checkInTime",
+            },
+            { title: "Manager", dataIndex: "manager", key: "manager" },
+          ]}
+        />
+      </Modal>
     </div>
   );
 }
