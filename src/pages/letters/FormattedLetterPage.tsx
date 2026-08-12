@@ -141,6 +141,12 @@ export default function FormattedLetterPage() {
     queryKey: ["employees"],
     queryFn: () => resourceService.list("/employees"),
   });
+  // Reuses the same /designations endpoint already used elsewhere in the app
+  // (e.g. Invite Employee) — no new API, no hardcoded list.
+  const designations = useQuery({
+    queryKey: ["designations"],
+    queryFn: () => resourceService.list("/designations"),
+  });
 
   const selectedEmp = (employees.data ?? []).find(
     (e: ResourceRecord) => String(e.id) === employeeId,
@@ -505,9 +511,23 @@ export default function FormattedLetterPage() {
             </Col>
             <Col xs={24} sm={12}>
               <Field label="Designation">
-                <AntInput
-                  value={meta.designation}
-                  onChange={(e) => setMetaField("designation", e.target.value)}
+                <AntSelect
+                  style={{ width: "100%" }}
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Select designation"
+                  value={meta.designation || undefined}
+                  onChange={(v) => setMetaField("designation", v)}
+                  notFoundContent="No designations available"
+                  options={((designations.data ?? []) as ResourceRecord[]).map(
+                    (d) => ({
+                      // Stored as the designation NAME (a plain string), same
+                      // as the free-text field it replaces — this is what
+                      // already flows into the letter payload/PDF unchanged.
+                      value: d.name,
+                      label: d.name,
+                    }),
+                  )}
                 />
               </Field>
             </Col>
