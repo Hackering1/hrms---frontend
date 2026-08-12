@@ -111,16 +111,22 @@ export default function FormattedLetterPage() {
   // this as a new candidate" suggestion row while the user is typing.
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [letterType, setLetterType] = useState<
-    "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE"
+    "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE" | "INTERNSHIP"
   >("OFFER");
 
   const isServiceLetter =
-    letterType === "RELIEVING" || letterType === "EXPERIENCE";
+    letterType === "RELIEVING" ||
+    letterType === "EXPERIENCE" ||
+    letterType === "INTERNSHIP";
   const [meta, setMeta] = useState<Record<string, string>>({
     letterDate: dayjs().format("YYYY-MM-DD"),
     place: "Bangalore",
     dateOfJoining: "",
     employmentEndDate: "",
+    // NEW — INTERNSHIP only: free text HR types per intern describing
+    // responsibilities/technologies/contributions. Blank by default; never
+    // hardcoded.
+    internshipDetails: "",
     designation: "",
     workLocation: "Bangalore",
     // NEW — employment type shown in Offer/Appointment letters. Defaults to
@@ -363,7 +369,9 @@ export default function FormattedLetterPage() {
             ? "Relieving"
             : letterType === "EXPERIENCE"
               ? "Experience_Relieving"
-              : "Offer";
+              : letterType === "INTERNSHIP"
+                ? "Internship"
+                : "Offer";
       a.download = `${typeLabel}_Letter_${employeeName.replace(/\s+/g, "_") || "Employee"}.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -483,6 +491,10 @@ export default function FormattedLetterPage() {
                     {
                       value: "EXPERIENCE",
                       label: "Experience Cum Relieving Letter",
+                    },
+                    {
+                      value: "INTERNSHIP",
+                      label: "Internship Experience Letter",
                     },
                   ]}
                 />
@@ -644,6 +656,20 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
+            {letterType === "INTERNSHIP" && (
+              <Col xs={24}>
+                <Field label="Responsibilities / Technologies (optional)">
+                  <AntInput.TextArea
+                    rows={4}
+                    placeholder="Describe the intern's responsibilities, technologies used, and contributions — this is typed per intern and included in the letter as written."
+                    value={meta.internshipDetails}
+                    onChange={(e) =>
+                      setMetaField("internshipDetails", e.target.value)
+                    }
+                  />
+                </Field>
+              </Col>
+            )}
             {letterType === "APPOINTMENT" && (
               <Col xs={24} sm={12}>
                 <Field label="CTC in words">
@@ -738,8 +764,8 @@ export default function FormattedLetterPage() {
           </AntButton>
           {isServiceLetter && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Relieving & Experience letters are issued on letterhead without a
-              salary annexure.
+              Relieving, Experience, and Internship letters are issued on
+              letterhead without a salary annexure.
             </Text>
           )}
           {!canGenerate && (
