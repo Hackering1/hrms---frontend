@@ -13,6 +13,7 @@ import {
   Table,
   Space,
   DatePicker,
+  Divider,
 } from "antd";
 import {
   FileTextOutlined,
@@ -445,6 +446,17 @@ export default function FormattedLetterPage() {
           }
         >
           <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              <Divider
+                titlePlacement="left"
+                style={{ margin: "0 0 4px" }}
+                plain
+              >
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  RECIPIENT
+                </Text>
+              </Divider>
+            </Col>
             <Col xs={24} sm={12}>
               <Field label="Employee">
                 <AntSelect
@@ -499,6 +511,17 @@ export default function FormattedLetterPage() {
                   ]}
                 />
               </Field>
+            </Col>
+            <Col xs={24}>
+              <Divider
+                titlePlacement="left"
+                style={{ margin: "0 0 4px" }}
+                plain
+              >
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  EMPLOYMENT DETAILS
+                </Text>
+              </Divider>
             </Col>
             <Col xs={24} sm={12}>
               <Field label="Letter Date">
@@ -610,6 +633,19 @@ export default function FormattedLetterPage() {
               </Field>
             </Col>
             {!isServiceLetter && (
+              <Col xs={24}>
+                <Divider
+                  titlePlacement="left"
+                  style={{ margin: "0 0 4px" }}
+                  plain
+                >
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    COMPENSATION
+                  </Text>
+                </Divider>
+              </Col>
+            )}
+            {!isServiceLetter && (
               <Col xs={24} sm={12}>
                 <Field label="Annual CTC (e.g. 4,22,268)">
                   <AntInput
@@ -680,6 +716,17 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
+            <Col xs={24}>
+              <Divider
+                titlePlacement="left"
+                style={{ margin: "0 0 4px" }}
+                plain
+              >
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  AUTHORIZED SIGNATORY
+                </Text>
+              </Divider>
+            </Col>
             <Col xs={24} sm={12}>
               <Field label="Signatory Name">
                 <AntInput
