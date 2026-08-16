@@ -39,7 +39,7 @@ const { TextArea } = AntInput;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -71,7 +71,7 @@ export default function RegularizationPage() {
     <ConfigProvider theme={theme}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Space>
-          <ClockCircleOutlined style={{ color: "#0d9488", fontSize: 20 }} />
+          <ClockCircleOutlined style={{ color: "#00a8f0", fontSize: 20 }} />
           <Title level={2} style={{ margin: 0 }}>
             Regularization
           </Title>
@@ -82,12 +82,19 @@ export default function RegularizationPage() {
             {
               key: "attendance",
               label: "Attendance Regularization",
-              children: <AttendanceRegTab managerScoped={managerScoped} isAdmin={isAdmin} />,
+              children: (
+                <AttendanceRegTab
+                  managerScoped={managerScoped}
+                  isAdmin={isAdmin}
+                />
+              ),
             },
             {
               key: "leave",
               label: "Leave Regularization",
-              children: <LeaveRegTab managerScoped={managerScoped} isAdmin={isAdmin} />,
+              children: (
+                <LeaveRegTab managerScoped={managerScoped} isAdmin={isAdmin} />
+              ),
             },
           ]}
         />
@@ -170,7 +177,8 @@ function AttendanceRegTab({
   });
 
   const deleteReg = useMutation({
-    mutationFn: (id: number) => attendanceService.deleteRegularizationPermanent(id),
+    mutationFn: (id: number) =>
+      attendanceService.deleteRegularizationPermanent(id),
     onSuccess: () => {
       toast.success("Request deleted");
       qc.invalidateQueries({ queryKey: ["regularizations"] });
@@ -257,6 +265,8 @@ function AttendanceRegTab({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
         }}
       >
         <Title level={5} style={{ margin: 0 }}>
@@ -270,6 +280,7 @@ function AttendanceRegTab({
         rowKey={(r: any) => r.id}
         columns={columns}
         dataSource={rows}
+        scroll={{ x: true }}
         locale={{ emptyText: "No regularization requests." }}
         pagination={{ pageSize: 10 }}
       />
@@ -603,6 +614,7 @@ function LeaveRegTab({
           rowKey={(l: any) => l.id}
           columns={columns}
           dataSource={rows}
+          scroll={{ x: true }}
           locale={{ emptyText: "No leave records." }}
           pagination={{ pageSize: 10 }}
         />

@@ -40,7 +40,7 @@ const YEAR = new Date().getFullYear();
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -134,7 +134,7 @@ export default function LeaveManagementPage() {
     <ConfigProvider theme={theme}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Space>
-          <ClearOutlined style={{ color: "#0d9488", fontSize: 20 }} />
+          <ClearOutlined style={{ color: "#00a8f0", fontSize: 20 }} />
           <Title level={2} style={{ margin: 0 }}>
             Leave Management
           </Title>
@@ -303,7 +303,7 @@ function ApplyTab() {
               <AntInput
                 value={days}
                 readOnly
-                style={{ background: "#f8fafc" }}
+                style={{ background: "var(--surface-2)" }}
               />
             </Field>
           </Col>
@@ -375,6 +375,7 @@ function ApplyTab() {
           rowKey={(r: any) => r.id}
           columns={reqColumns}
           dataSource={myRequests.data ?? []}
+          scroll={{ x: true }}
           locale={{ emptyText: "No requests yet." }}
           pagination={{ pageSize: 10 }}
         />
@@ -547,6 +548,7 @@ function ReportsTab({
               rowKey={(b: any) => b.id}
               columns={balanceColumns}
               dataSource={balances.data ?? []}
+              scroll={{ x: true }}
               locale={{ emptyText: "No balances." }}
               pagination={false}
             />
@@ -559,6 +561,7 @@ function ReportsTab({
               rowKey={(r: any) => r.id}
               columns={requestColumns}
               dataSource={requests.data ?? []}
+              scroll={{ x: true }}
               locale={{ emptyText: "No requests." }}
               pagination={{ pageSize: 10 }}
             />
@@ -689,6 +692,7 @@ function ApprovalsTab({ managerScoped = false }: { managerScoped?: boolean }) {
       rowKey={(r: any) => r.id}
       columns={columns}
       dataSource={rows}
+      scroll={{ x: true }}
       locale={{ emptyText: "No pending leave requests." }}
       pagination={{ pageSize: 10 }}
     />

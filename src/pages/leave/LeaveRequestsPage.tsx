@@ -23,7 +23,7 @@ const { TextArea } = AntInput;
 
 const theme = {
   token: {
-    colorPrimary: "#0d9488",
+    colorPrimary: "#00a8f0",
     borderRadius: 10,
     fontFamily: "Inter, system-ui, sans-serif",
   },
@@ -170,6 +170,8 @@ export default function LeaveRequestsPage() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
           }}
         >
           <Title level={2} style={{ margin: 0 }}>
@@ -189,6 +191,7 @@ export default function LeaveRequestsPage() {
           rowKey={(r: any) => r.id}
           columns={columns}
           dataSource={rows}
+          scroll={{ x: true }}
           locale={{
             emptyText: requests.isError
               ? "Failed to load. Is the backend running?"

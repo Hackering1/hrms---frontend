@@ -1147,8 +1147,8 @@ export default function EmployeesPage() {
                   <div
                     key={i}
                     style={{
-                      border: "1px solid #e5e9e9",
-                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
                       padding: 12,
                     }}
                   >
@@ -1347,8 +1347,8 @@ export default function EmployeesPage() {
                       <div
                         key={i}
                         style={{
-                          border: "1px solid #e5e9e9",
-                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
                           padding: 12,
                         }}
                       >
