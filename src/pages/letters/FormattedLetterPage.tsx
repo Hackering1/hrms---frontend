@@ -138,8 +138,8 @@ export default function FormattedLetterPage() {
     contractDurationUnit: "MONTHS",
     ctcAnnual: "",
     ctcInWords: "",
-    signatoryName: "Mohammad Noor",
-    signatoryTitle: "HR Director",
+    signatoryName: "Midde Gouse Modeen",
+    signatoryTitle: "People Practice Director",
     signatureFileId: "",
   });
   const [salary, setSalary] = useState<Record<string, string>>({});
