@@ -55,6 +55,11 @@ type SalaryKey =
   | "gratuityA"
   | "employerCostM"
   | "employerCostA"
+  // NEW — optional Variable Pay component, folded into the "Employer Costs
+  // Included in CTC" section (same bucket as PF/Gratuity/Insurance) —
+  // blank/"0" whenever Variable Pay is toggled off.
+  | "variablePayM"
+  | "variablePayA"
   | "ctcMonthlyTotal"
   | "ctcAnnualTotal"
   | "pfEmployeeM"
@@ -143,6 +148,14 @@ export default function FormattedLetterPage() {
     signatureFileId: "",
   });
   const [salary, setSalary] = useState<Record<string, string>>({});
+  // NEW — Variable Pay toggle for the Compensation section. Purely a
+  // frontend UI concern (not sent to the backend as its own field — the
+  // backend only needs the resulting variablePayM/variablePayA amounts,
+  // which already ride along inside the `salary` object like every other
+  // salary line). Kept out of `meta`/the payload on purpose: `meta` is
+  // spread wholesale into the request body, and the backend record would
+  // reject an unrecognized "hasVariablePay" JSON property.
+  const [hasVariablePay, setHasVariablePay] = useState<"YES" | "NO">("NO");
 
   const employees = useQuery({
     queryKey: ["employees"],
@@ -249,15 +262,17 @@ export default function FormattedLetterPage() {
    *   Employee PF = ₹1,800/mo fixed (₹21,600/yr)
    *   Professional Tax (KA) = ₹200/mo fixed (₹2,400/yr)
    *   Total Employer Cost = Employer PF + Gratuity + Group Insurance
+   *                          + Variable Pay (when toggled on)
    *   Gross Salary (E) = CTC − Total Employer Cost
    *   Special Allowance = Gross − Basic − HRA − LTA (remainder)
    *   Total Deductions (D) = Employee PF + Professional Tax
    *   Net Take Home = Gross − Total Deductions
    *   Total CTC = the entered target CTC
    *
-   * Leave Travel Allowance and Group Health/Accident Insurance have no
-   * confirmed formula — they're left as whatever is already typed in those
-   * cells (0 if empty), never invented or overwritten with a guessed value.
+   * Leave Travel Allowance, Group Health/Accident Insurance, and Variable
+   * Pay have no confirmed formula — they're left as whatever is already
+   * typed in those cells (0 if empty/toggled off), never invented or
+   * overwritten with a guessed value.
    */
   const autoFillSalary = () => {
     const ctc = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
@@ -293,8 +308,17 @@ export default function FormattedLetterPage() {
     const insuranceM = Math.round(
       (Number((salary.insuranceA || "").replace(/[^\d.]/g, "")) || 0) / 12,
     );
+    // Only counted when the Variable Pay toggle is "Yes" — otherwise treated
+    // as 0, exactly as the requirement specifies.
+    const variablePayM =
+      hasVariablePay === "YES"
+        ? Math.round(
+            (Number((salary.variablePayA || "").replace(/[^\d.]/g, "")) || 0) /
+              12,
+          )
+        : 0;
 
-    const employerCostM = pfEmployerM + gratuityM + insuranceM;
+    const employerCostM = pfEmployerM + gratuityM + insuranceM + variablePayM;
     const grossM = Math.round(ctc / 12) - employerCostM;
     const specialM = grossM - basicM - hraM - ltaM;
     const deductionsM = pfEmployeeM + ptM;
@@ -326,6 +350,14 @@ export default function FormattedLetterPage() {
       gratuityA: inr(a(gratuityM)),
       insuranceM: inr(insuranceM),
       insuranceA: inr(a(insuranceM)),
+      // Only written when toggled on — when "No", these stay cleared (they
+      // were already blanked out the moment the toggle was switched off).
+      ...(hasVariablePay === "YES"
+        ? {
+            variablePayM: inr(variablePayM),
+            variablePayA: inr(a(variablePayM)),
+          }
+        : {}),
       employerCostM: inr(employerCostM),
       employerCostA: inr(a(employerCostM)),
       ctcMonthlyTotal: inr(Math.round(ctc / 12)),
@@ -404,6 +436,26 @@ export default function FormattedLetterPage() {
       !!meta.ctcAnnual &&
       contractDurationOk &&
       (letterType !== "C2H" || !!meta.employmentEndDate);
+
+  // NEW — Variable Pay row, inserted directly above "Total Employer Cost"
+  // (same section as PF/Gratuity/Insurance) only when the toggle above is
+  // "Yes". The base `salaryRows` constant is left completely untouched so
+  // every other letter type/table renders exactly as it did before.
+  const visibleSalaryRows =
+    hasVariablePay === "YES"
+      ? (() => {
+          const idx = salaryRows.findIndex(
+            (row) => row.label === "Total Employer Cost",
+          );
+          const withVariablePay = [...salaryRows];
+          withVariablePay.splice(idx, 0, {
+            label: "Variable Pay",
+            m: "variablePayM",
+            a: "variablePayA",
+          });
+          return withVariablePay;
+        })()
+      : salaryRows;
 
   const salaryColumns = [
     { title: "Component", dataIndex: "label", key: "label" },
@@ -738,6 +790,45 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
+            {!isServiceLetter && (
+              <Col xs={24} sm={12}>
+                <Field label="Variable Pay">
+                  <AntSelect
+                    style={{ width: "100%" }}
+                    value={hasVariablePay}
+                    onChange={(v: "YES" | "NO") => {
+                      setHasVariablePay(v);
+                      // Toggling off clears any previously-typed amount so a
+                      // stale value can never leak into the calculation or
+                      // the payload once the row is hidden again.
+                      if (v === "NO") {
+                        setSalary((s) => ({
+                          ...s,
+                          variablePayM: "",
+                          variablePayA: "",
+                        }));
+                      }
+                    }}
+                    options={[
+                      { value: "NO", label: "No" },
+                      { value: "YES", label: "Yes" },
+                    ]}
+                  />
+                </Field>
+              </Col>
+            )}
+            {!isServiceLetter && hasVariablePay === "YES" && (
+              <Col xs={24} sm={12}>
+                <Field label="Variable Pay Amount (Annual)">
+                  <AntInput
+                    value={salary.variablePayA ?? ""}
+                    onChange={(e) =>
+                      setSalaryField("variablePayA", e.target.value)
+                    }
+                  />
+                </Field>
+              </Col>
+            )}
             <Col xs={24}>
               <Divider
                 titlePlacement="left"
@@ -808,7 +899,7 @@ export default function FormattedLetterPage() {
               size="small"
               rowKey={(r: any) => r.m}
               columns={salaryColumns}
-              dataSource={salaryRows}
+              dataSource={visibleSalaryRows}
               pagination={false}
             />
           </Card>
