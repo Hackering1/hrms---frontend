@@ -112,7 +112,7 @@ export default function FormattedLetterPage() {
   // this as a new candidate" suggestion row while the user is typing.
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [letterType, setLetterType] = useState<
-    "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE" | "INTERNSHIP"
+    "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE" | "INTERNSHIP" | "C2H"
   >("OFFER");
 
   const isServiceLetter =
@@ -372,7 +372,9 @@ export default function FormattedLetterPage() {
               ? "Experience_Relieving"
               : letterType === "INTERNSHIP"
                 ? "Internship"
-                : "Offer";
+                : letterType === "C2H"
+                  ? "Contract_to_Hire_Offer"
+                  : "Offer";
       a.download = `${typeLabel}_Letter_${employeeName.replace(/\s+/g, "_") || "Employee"}.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -384,8 +386,14 @@ export default function FormattedLetterPage() {
       toast.error(e?.response?.data?.message ?? "Couldn't generate letter"),
   });
 
+  // C2H is inherently a contract engagement (no separate Employment Type
+  // selector is shown for it — see the form below), so contract duration is
+  // required for C2H the same way it's required when employmentType is
+  // explicitly set to "CONTRACT" for Offer/Appointment letters.
+  const contractDurationRequired =
+    meta.employmentType === "CONTRACT" || letterType === "C2H";
   const contractDurationOk =
-    meta.employmentType !== "CONTRACT" || !!meta.contractDuration;
+    !contractDurationRequired || !!meta.contractDuration;
 
   // A typed-but-unmatched name is just as valid as a picked employee — only
   // the name text is actually required to generate a letter.
@@ -394,7 +402,8 @@ export default function FormattedLetterPage() {
     : !!employeeName &&
       !!meta.designation &&
       !!meta.ctcAnnual &&
-      contractDurationOk;
+      contractDurationOk &&
+      (letterType !== "C2H" || !!meta.employmentEndDate);
 
   const salaryColumns = [
     { title: "Component", dataIndex: "label", key: "label" },
@@ -501,6 +510,10 @@ export default function FormattedLetterPage() {
                     { value: "OFFER", label: "Offer Letter" },
                     { value: "APPOINTMENT", label: "Appointment Letter" },
                     {
+                      value: "C2H",
+                      label: "Contract-to-Hire Offer Letter",
+                    },
+                    {
                       value: "EXPERIENCE",
                       label: "Experience Cum Relieving Letter",
                     },
@@ -574,7 +587,7 @@ export default function FormattedLetterPage() {
                 />
               </Field>
             </Col>
-            {!isServiceLetter && (
+            {!isServiceLetter && letterType !== "C2H" && (
               <Col xs={24} sm={12}>
                 <Field label="Employment Type">
                   <AntSelect
@@ -590,33 +603,36 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter && meta.employmentType === "CONTRACT" && (
-              <Col xs={24} sm={12}>
-                <Field label="Contract Duration">
-                  <Space.Compact style={{ width: "100%" }}>
-                    <AntInput
-                      type="number"
-                      min={1}
-                      style={{ width: "60%" }}
-                      placeholder="e.g. 6"
-                      value={meta.contractDuration}
-                      onChange={(e) =>
-                        setMetaField("contractDuration", e.target.value)
-                      }
-                    />
-                    <AntSelect
-                      style={{ width: "40%" }}
-                      value={meta.contractDurationUnit}
-                      onChange={(v) => setMetaField("contractDurationUnit", v)}
-                      options={[
-                        { value: "DAYS", label: "Days" },
-                        { value: "MONTHS", label: "Months" },
-                      ]}
-                    />
-                  </Space.Compact>
-                </Field>
-              </Col>
-            )}
+            {!isServiceLetter &&
+              (meta.employmentType === "CONTRACT" || letterType === "C2H") && (
+                <Col xs={24} sm={12}>
+                  <Field label="Contract Duration">
+                    <Space.Compact style={{ width: "100%" }}>
+                      <AntInput
+                        type="number"
+                        min={1}
+                        style={{ width: "60%" }}
+                        placeholder="e.g. 6"
+                        value={meta.contractDuration}
+                        onChange={(e) =>
+                          setMetaField("contractDuration", e.target.value)
+                        }
+                      />
+                      <AntSelect
+                        style={{ width: "40%" }}
+                        value={meta.contractDurationUnit}
+                        onChange={(v) =>
+                          setMetaField("contractDurationUnit", v)
+                        }
+                        options={[
+                          { value: "DAYS", label: "Days" },
+                          { value: "MONTHS", label: "Months" },
+                        ]}
+                      />
+                    </Space.Compact>
+                  </Field>
+                </Col>
+              )}
             <Col xs={24} sm={12}>
               <Field label="Date of Joining">
                 <DatePicker
@@ -671,9 +687,15 @@ export default function FormattedLetterPage() {
                 </div>
               </Col>
             )}
-            {isServiceLetter && (
+            {(isServiceLetter || letterType === "C2H") && (
               <Col xs={24} sm={12}>
-                <Field label="Employment End Date">
+                <Field
+                  label={
+                    letterType === "C2H"
+                      ? "Contract End Date"
+                      : "Employment End Date"
+                  }
+                >
                   <DatePicker
                     style={{ width: "100%" }}
                     format="DD/MM/YYYY"
@@ -706,7 +728,7 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {letterType === "APPOINTMENT" && (
+            {(letterType === "APPOINTMENT" || letterType === "C2H") && (
               <Col xs={24} sm={12}>
                 <Field label="CTC in words">
                   <AntInput
