@@ -112,6 +112,13 @@ export default function FormattedLetterPage() {
   // has been sent) leaves employeeId blank and is sent as employeeName only.
   const [employeeId, setEmployeeId] = useState("");
   const [employeeNameInput, setEmployeeNameInput] = useState("");
+  // NEW — candidate address, typed by HR, ONLY used when the candidate is
+  // not saved in the portal (employeeId is blank). When employeeId is set,
+  // this is never sent — the backend enriches the address from that exact
+  // employee's record, exactly as it already did. This never falls back to
+  // another employee's data: it is either what HR types here, for this
+  // candidate, or nothing at all.
+  const [candidateAddress, setCandidateAddress] = useState("");
   // Raw text currently typed into the dropdown's search box (separate from
   // the committed employeeNameInput above) — used only to build the "use
   // this as a new candidate" suggestion row while the user is typing.
@@ -373,6 +380,11 @@ export default function FormattedLetterPage() {
         // parses this as a UUID and an empty string would fail to parse.
         employeeId: employeeId || null,
         employeeName,
+        // NEW — only sent for a candidate not saved in the portal. When
+        // employeeId is set, this stays "" so the backend's existing
+        // enrichment (by that exact employeeId) is untouched — never
+        // overridden, never another employee's address.
+        employeeAddress: employeeId ? "" : candidateAddress.trim(),
         letterType,
         ...meta,
         // #11: letterDate is stored as ISO internally; the letter prints a
@@ -429,12 +441,19 @@ export default function FormattedLetterPage() {
 
   // A typed-but-unmatched name is just as valid as a picked employee — only
   // the name text is actually required to generate a letter.
+  // NEW — a candidate not saved in the portal must have an address typed
+  // in before a letter can be generated (Test 3: never generate a letter
+  // with a missing/incorrect address). Saved/invited employees are
+  // unaffected — their address is enriched server-side as before.
+  const candidateAddressOk = !!employeeId || !!candidateAddress.trim();
+
   const canGenerate = isServiceLetter
     ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
     : !!employeeName &&
       !!meta.designation &&
       !!meta.ctcAnnual &&
       contractDurationOk &&
+      candidateAddressOk &&
       (letterType !== "C2H" || !!meta.employmentEndDate);
 
   // NEW — Variable Pay row, inserted directly above "Total Employer Cost"
@@ -542,6 +561,11 @@ export default function FormattedLetterPage() {
                     setEmployeeNameInput(option.empName);
                     setEmployeeId(option.empId);
                     setEmployeeSearch("");
+                    // Picking a saved/invited employee means the backend
+                    // will enrich the address from that employee's own
+                    // record — clear any address typed for a previous
+                    // manual candidate so it can never be sent/shown here.
+                    if (option.empId) setCandidateAddress("");
                   }}
                   placeholder="Select a saved/invited employee, or type a new candidate's name"
                 />
@@ -552,6 +576,23 @@ export default function FormattedLetterPage() {
                 </Text>
               </Field>
             </Col>
+            {/* NEW — shown only for a candidate who isn't saved in the
+                portal (no employeeId resolved). For a saved/invited
+                employee, the address continues to come from that
+                employee's own record exactly as before — this field is
+                simply hidden and never sent. */}
+            {!isServiceLetter && !employeeId && (
+              <Col xs={24}>
+                <Field label="Candidate Address">
+                  <AntInput.TextArea
+                    rows={2}
+                    placeholder="Address to print on the letter — this candidate isn't saved in the portal, so it isn't on file anywhere else."
+                    value={candidateAddress}
+                    onChange={(e) => setCandidateAddress(e.target.value)}
+                  />
+                </Field>
+              </Col>
+            )}
             <Col xs={24} sm={12}>
               <Field label="Letter Type">
                 <AntSelect
@@ -930,7 +971,9 @@ export default function FormattedLetterPage() {
           )}
           {!canGenerate && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Enter an employee name, designation, and CTC to enable.
+              {!candidateAddressOk
+                ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
+                : "Enter an employee name, designation, and CTC to enable."}
             </Text>
           )}
         </div>
