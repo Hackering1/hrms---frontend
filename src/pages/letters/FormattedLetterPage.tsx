@@ -585,11 +585,18 @@ export default function FormattedLetterPage() {
               <Col xs={24}>
                 <Field label="Candidate Address">
                   <AntInput.TextArea
-                    rows={2}
-                    placeholder="Address to print on the letter — this candidate isn't saved in the portal, so it isn't on file anywhere else."
+                    rows={4}
+                    placeholder={
+                      "One address line per row, exactly as it should print — press Enter between each, e.g.:\nH.No 516, Basaveshwar Circle, V.C\nBelagavi-590003\nIndia"
+                    }
                     value={candidateAddress}
                     onChange={(e) => setCandidateAddress(e.target.value)}
                   />
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Press Enter after each line (house/street, then city-PIN,
+                    then state/country) — it prints on the letter exactly as
+                    typed here, one line at a time.
+                  </Text>
                 </Field>
               </Col>
             )}
