@@ -57,4 +57,16 @@ export const letterService = {
     });
     return res.data as Blob;
   },
+  // NEW — generate the same letter PDF server-side and email it, instead of
+  // downloading it. Reuses the exact same payload shape as generatePdf().
+  async sendEmail(
+    payload: Record<string, unknown>,
+    recipientEmail: string,
+  ): Promise<string> {
+    const { data } = await apiClient.post<ApiResponse<string>>(
+      "/letter-pdf/send-email",
+      { letter: payload, recipientEmail },
+    );
+    return data.message;
+  },
 };

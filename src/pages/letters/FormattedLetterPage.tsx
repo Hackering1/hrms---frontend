@@ -19,6 +19,7 @@ import {
   FileTextOutlined,
   DownloadOutlined,
   ThunderboltOutlined,
+  MailOutlined,
 } from "@ant-design/icons";
 import { letterService } from "../../services/letterService";
 import { resourceService } from "../../services/resourceService";
@@ -119,6 +120,13 @@ export default function FormattedLetterPage() {
   // another employee's data: it is either what HR types here, for this
   // candidate, or nothing at all.
   const [candidateAddress, setCandidateAddress] = useState("");
+  // NEW — recipient email for the "Send Email" action. For a saved/invited
+  // employee this is pre-filled (read-only display) from that employee's own
+  // record; for a candidate not in the portal, HR types it in directly. Kept
+  // entirely separate from candidateAddress/employeeId state so switching
+  // between employees can never leak one candidate's email onto another's
+  // send.
+  const [manualEmail, setManualEmail] = useState("");
   // Raw text currently typed into the dropdown's search box (separate from
   // the committed employeeNameInput above) — used only to build the "use
   // this as a new candidate" suggestion row while the user is typing.
@@ -373,53 +381,59 @@ export default function FormattedLetterPage() {
     toast.success("Salary structure auto-filled from CTC + Basic");
   };
 
+  // NEW — extracted, unchanged, from the previous inline payload object so
+  // both "Generate & Download PDF" and the new "Send Email" action build the
+  // exact same request body from one place (no duplicate logic).
+  const letterTypeFileLabel = () =>
+    letterType === "APPOINTMENT"
+      ? "Appointment"
+      : letterType === "RELIEVING"
+        ? "Relieving"
+        : letterType === "EXPERIENCE"
+          ? "Experience_Relieving"
+          : letterType === "INTERNSHIP"
+            ? "Internship"
+            : letterType === "C2H"
+              ? "Contract_to_Hire_Offer"
+              : "Offer";
+
+  const buildLetterPayload = () => ({
+    // "" (unmatched/typed name) must go as null, not "" — the backend
+    // parses this as a UUID and an empty string would fail to parse.
+    employeeId: employeeId || null,
+    employeeName,
+    // Only sent for a candidate not saved in the portal. When employeeId is
+    // set, this stays "" so the backend's existing enrichment (by that exact
+    // employeeId) is untouched — never overridden, never another employee's
+    // address.
+    employeeAddress: employeeId ? "" : candidateAddress.trim(),
+    letterType,
+    ...meta,
+    // #11: letterDate is stored as ISO internally; the letter prints a
+    // friendly "18 May 2026" style, so format it on the way out.
+    letterDate: meta.letterDate
+      ? dayjs(meta.letterDate).format("DD MMMM YYYY")
+      : "",
+    // Date of Joining and Employment End Date are also picked via calendar
+    // (stored ISO) — format them to the same friendly style for the letter.
+    dateOfJoining: meta.dateOfJoining
+      ? dayjs(meta.dateOfJoining).format("DD MMMM YYYY")
+      : "",
+    employmentEndDate: meta.employmentEndDate
+      ? dayjs(meta.employmentEndDate).format("DD MMMM YYYY")
+      : "",
+    designation: meta.designation || selectedEmp?.designationName || "",
+    ...salary,
+  });
+
   const gen = useMutation({
     mutationFn: async () => {
-      const payload = {
-        // "" (unmatched/typed name) must go as null, not "" — the backend
-        // parses this as a UUID and an empty string would fail to parse.
-        employeeId: employeeId || null,
-        employeeName,
-        // NEW — only sent for a candidate not saved in the portal. When
-        // employeeId is set, this stays "" so the backend's existing
-        // enrichment (by that exact employeeId) is untouched — never
-        // overridden, never another employee's address.
-        employeeAddress: employeeId ? "" : candidateAddress.trim(),
-        letterType,
-        ...meta,
-        // #11: letterDate is stored as ISO internally; the letter prints a
-        // friendly "18 May 2026" style, so format it on the way out.
-        letterDate: meta.letterDate
-          ? dayjs(meta.letterDate).format("DD MMMM YYYY")
-          : "",
-        // Date of Joining and Employment End Date are also picked via calendar
-        // (stored ISO) — format them to the same friendly style for the letter.
-        dateOfJoining: meta.dateOfJoining
-          ? dayjs(meta.dateOfJoining).format("DD MMMM YYYY")
-          : "",
-        employmentEndDate: meta.employmentEndDate
-          ? dayjs(meta.employmentEndDate).format("DD MMMM YYYY")
-          : "",
-        designation: meta.designation || selectedEmp?.designationName || "",
-        ...salary,
-      };
+      const payload = buildLetterPayload();
       const blob = await letterService.generatePdf(payload);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const typeLabel =
-        letterType === "APPOINTMENT"
-          ? "Appointment"
-          : letterType === "RELIEVING"
-            ? "Relieving"
-            : letterType === "EXPERIENCE"
-              ? "Experience_Relieving"
-              : letterType === "INTERNSHIP"
-                ? "Internship"
-                : letterType === "C2H"
-                  ? "Contract_to_Hire_Offer"
-                  : "Offer";
-      a.download = `${typeLabel}_Letter_${employeeName.replace(/\s+/g, "_") || "Employee"}.pdf`;
+      a.download = `${letterTypeFileLabel()}_Letter_${employeeName.replace(/\s+/g, "_") || "Employee"}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -428,6 +442,29 @@ export default function FormattedLetterPage() {
     onSuccess: () => toast.success("Letter PDF generated"),
     onError: (e: any) =>
       toast.error(e?.response?.data?.message ?? "Couldn't generate letter"),
+  });
+
+  // NEW — recipient email for "Send Email". Saved/invited employee: use
+  // their email on file (read-only display, never editable here — HR fixes
+  // a wrong email via Employee Management, not on the Letters page).
+  // Not-in-portal candidate: whatever HR typed into the Email Address field.
+  const effectiveEmail = employeeId
+    ? (selectedEmp?.email ?? "").trim()
+    : manualEmail.trim();
+  const EMAIL_RE = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/;
+  const emailFormatOk = EMAIL_RE.test(effectiveEmail);
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async () => {
+      const payload = buildLetterPayload();
+      return letterService.sendEmail(payload, effectiveEmail);
+    },
+    onSuccess: (message: string) => toast.success(message),
+    onError: (e: any) =>
+      toast.error(
+        e?.response?.data?.message ??
+          "Failed to send offer letter. Please try again.",
+      ),
   });
 
   // C2H is inherently a contract engagement (no separate Employment Type
@@ -455,6 +492,11 @@ export default function FormattedLetterPage() {
       contractDurationOk &&
       candidateAddressOk &&
       (letterType !== "C2H" || !!meta.employmentEndDate);
+
+  // NEW — everything canGenerate already requires, PLUS a resolvable,
+  // valid-format recipient email. Test 3: never allow a send with an
+  // empty/invalid email — the button simply stays disabled.
+  const canSendEmail = canGenerate && emailFormatOk;
 
   // NEW — Variable Pay row, inserted directly above "Total Employer Cost"
   // (same section as PF/Gratuity/Insurance) only when the toggle above is
@@ -563,9 +605,13 @@ export default function FormattedLetterPage() {
                     setEmployeeSearch("");
                     // Picking a saved/invited employee means the backend
                     // will enrich the address from that employee's own
-                    // record — clear any address typed for a previous
-                    // manual candidate so it can never be sent/shown here.
-                    if (option.empId) setCandidateAddress("");
+                    // record — clear any address/email typed for a
+                    // previous manual candidate so it can never be
+                    // sent/shown here.
+                    if (option.empId) {
+                      setCandidateAddress("");
+                      setManualEmail("");
+                    }
                   }}
                   placeholder="Select a saved/invited employee, or type a new candidate's name"
                 />
@@ -597,6 +643,39 @@ export default function FormattedLetterPage() {
                     then state/country) — it prints on the letter exactly as
                     typed here, one line at a time.
                   </Text>
+                </Field>
+              </Col>
+            )}
+            {/* NEW — recipient email for the "Send Email" action below.
+                Saved/invited employee: read-only display of their email on
+                file (fix a wrong one via Employee Management, not here).
+                Not-in-portal candidate: HR types it directly, used only for
+                this send — never persisted to any employee record. */}
+            {!isServiceLetter && (
+              <Col xs={24} sm={12}>
+                <Field label="Email">
+                  {employeeId ? (
+                    <>
+                      <AntInput value={selectedEmp?.email || ""} disabled />
+                      {!selectedEmp?.email && (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          No email on file for this employee — Send Email will
+                          stay disabled until one is added.
+                        </Text>
+                      )}
+                    </>
+                  ) : (
+                    <AntInput
+                      placeholder="candidate@example.com"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      status={
+                        manualEmail.trim() && !emailFormatOk
+                          ? "error"
+                          : undefined
+                      }
+                    />
+                  )}
                 </Field>
               </Col>
             )}
@@ -970,6 +1049,16 @@ export default function FormattedLetterPage() {
           >
             Generate & Download PDF
           </AntButton>
+          {!isServiceLetter && (
+            <AntButton
+              icon={<MailOutlined />}
+              loading={sendEmailMutation.isPending}
+              disabled={!canSendEmail || sendEmailMutation.isPending}
+              onClick={() => sendEmailMutation.mutate()}
+            >
+              {sendEmailMutation.isPending ? "Sending..." : "Send Email"}
+            </AntButton>
+          )}
           {isServiceLetter && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               Relieving, Experience, and Internship letters are issued on
@@ -981,6 +1070,13 @@ export default function FormattedLetterPage() {
               {!candidateAddressOk
                 ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
                 : "Enter an employee name, designation, and CTC to enable."}
+            </Text>
+          )}
+          {canGenerate && !isServiceLetter && !canSendEmail && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {employeeId
+                ? "This employee has no email on file — add one to enable Send Email."
+                : "Enter a valid email address to enable Send Email."}
             </Text>
           )}
         </div>
