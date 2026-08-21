@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -28,6 +28,78 @@ import dayjs from "dayjs";
 import type { ResourceRecord } from "../../utils/types";
 
 const { Title, Text } = Typography;
+
+// NEW — converts a whole-rupee amount to words using the Indian numbering
+// system (Lakhs/Crores, not Western thousands/millions), matching the
+// phrasing already used throughout the letters (e.g. "Seven Lakhs Fifty
+// Thousand"). Module-level, pure, no component state — safe to call from
+// an effect without being recreated every render.
+const ONES = [
+  "",
+  "One",
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Eleven",
+  "Twelve",
+  "Thirteen",
+  "Fourteen",
+  "Fifteen",
+  "Sixteen",
+  "Seventeen",
+  "Eighteen",
+  "Nineteen",
+];
+const TENS = [
+  "",
+  "",
+  "Twenty",
+  "Thirty",
+  "Forty",
+  "Fifty",
+  "Sixty",
+  "Seventy",
+  "Eighty",
+  "Ninety",
+];
+
+function twoDigitWords(n: number): string {
+  if (n < 20) return ONES[n];
+  const t = Math.floor(n / 10);
+  const o = n % 10;
+  return TENS[t] + (o ? " " + ONES[o] : "");
+}
+
+function threeDigitWords(n: number): string {
+  const h = Math.floor(n / 100);
+  const rest = n % 100;
+  let out = "";
+  if (h) out += ONES[h] + " Hundred";
+  if (rest) out += (out ? " " : "") + twoDigitWords(rest);
+  return out;
+}
+
+function numberToIndianWords(amount: number): string {
+  const n = Math.round(amount);
+  if (n === 0) return "Zero";
+  const crore = Math.floor(n / 10000000);
+  const lakh = Math.floor((n % 10000000) / 100000);
+  const thousand = Math.floor((n % 100000) / 1000);
+  const hundred = n % 1000;
+
+  const parts: string[] = [];
+  if (crore) parts.push(threeDigitWords(crore) + " Crores");
+  if (lakh) parts.push(twoDigitWords(lakh) + " Lakhs");
+  if (thousand) parts.push(twoDigitWords(thousand) + " Thousand");
+  if (hundred) parts.push(threeDigitWords(hundred));
+  return parts.join(" ");
+}
 
 const theme = {
   token: {
@@ -265,6 +337,38 @@ export default function FormattedLetterPage() {
     setMeta((m) => ({ ...m, [k]: v }));
   const setSalaryField = (k: string, v: string) =>
     setSalary((s) => ({ ...s, [k]: v }));
+
+  // NEW — Contract End Date auto-calculates from Date of Joining + Contract
+  // Duration (C2H only, the only letter type with a Contract Duration
+  // input). Re-runs live whenever any of the three source fields change;
+  // the End Date field stays a normal editable DatePicker, so typing over
+  // the computed value afterward still works — it's simply recalculated
+  // again the next time duration/unit/joining date changes.
+  useEffect(() => {
+    if (letterType !== "C2H") return;
+    const n = Number(meta.contractDuration);
+    if (!meta.dateOfJoining || !n || n <= 0) return;
+    const unit = meta.contractDurationUnit === "DAYS" ? "day" : "month";
+    const end = dayjs(meta.dateOfJoining).add(n, unit).format("YYYY-MM-DD");
+    setMetaField("employmentEndDate", end);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    meta.contractDuration,
+    meta.contractDurationUnit,
+    meta.dateOfJoining,
+    letterType,
+  ]);
+
+  // NEW — CTC in Words auto-fills from Annual CTC (Appointment/C2H only,
+  // the only letter types with a CTC in Words field), using the Indian
+  // numbering system (Lakhs/Crores) to match the rest of the letter.
+  useEffect(() => {
+    if (letterType !== "APPOINTMENT" && letterType !== "C2H") return;
+    const n = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
+    if (!n || n <= 0) return;
+    setMetaField("ctcInWords", numberToIndianWords(n));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta.ctcAnnual, letterType]);
 
   /**
    * Auto-fill the salary structure from Annual CTC + a manually-entered Basic
