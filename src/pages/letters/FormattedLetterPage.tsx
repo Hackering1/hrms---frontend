@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -170,12 +170,72 @@ const salaryRows: { label: string; m: SalaryKey; a: SalaryKey }[] = [
 ];
 
 // Indian-style number formatting (e.g. 312780 -> "3,12,780").
+// Operates on the absolute value and prepends "-" only at the very end —
+// deliberately not just Math.round(n).toString() directly on a negative n,
+// which breaks for any n with exactly 3 digits of magnitude (-100..-999):
+// the "rest" substring degenerates to a lone "-" with zero actual digits,
+// and the comma-insertion regex still fires on it, producing "-,461"
+// instead of "-461". Negative values are now only reachable through
+// grossM/netM/specialM when GMI/Variable Pay genuinely exceed CTC — a
+// state ctcConfigWarning already flags as invalid — but the display
+// itself should never be malformed even in that already-flagged state.
 function inr(n: number): string {
-  const s = Math.round(n).toString();
+  const neg = n < 0;
+  const s = Math.round(Math.abs(n)).toString();
   const last3 = s.slice(-3);
   const rest = s.slice(0, -3);
-  if (!rest) return last3;
-  return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
+  const formatted = rest
+    ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3
+    : last3;
+  return neg ? "-" + formatted : formatted;
+}
+
+// NEW — PF wage-ceiling rule: 12% of Basic when Basic is below ₹15,000
+// (the statutory PF wage ceiling), otherwise a flat ₹1,800/month. Applied
+// identically to Employee and Employer PF — same rule, one function, so
+// ₹1,800 is never hardcoded separately in two places.
+function calcMonthlyPF(basicM: number): number {
+  return basicM < 15000 ? Math.round(basicM * 0.12) : 1800;
+}
+
+// NEW — configurable business default for Group Health/Accident Insurance
+// (not a statutory figure). Used only to seed the field the first time the
+// Compensation section is shown for a letter type that needs it; it stays a
+// normal editable cell afterward, same as every other salary row.
+const DEFAULT_GMI_MONTHLY = 1250;
+
+// NEW — closed-form solve for "Basic = 50% of Gross" given the current
+// formula (Gross = CTC − Employer Cost, and Employer Cost depends on Basic
+// via PF + Gratuity). Naively plugging Basic=0.5×Gross into a formula where
+// Gross itself depends on Basic is circular; this solves it algebraically
+// instead of guessing/iterating:
+//
+//   EmployerCost = PF_employer(Basic) + 0.0481×Basic + GMI + VariablePay
+//   Gross = CTC − EmployerCost
+//   Basic = 0.5 × Gross
+//   => Basic = 0.5×(CTC − GMI − VariablePay − PF_employer(Basic)) − 0.02405×Basic
+//
+// PF_employer is piecewise (flat ₹1,800 at/above ₹15,000 Basic, else 12%
+// of Basic), so there are two possible closed-form answers — solve both,
+// keep whichever one is actually consistent with the PF tier it assumed.
+// All arguments/return value are MONTHLY figures.
+function calcBasicFor50PercentFloor(
+  ctcM: number,
+  gmiM: number,
+  variablePayM: number,
+): number {
+  // Case A: assume Basic >= 15,000 (flat ₹1,800 PF)
+  const basicIfHighTier = (0.5 * (ctcM - 1800 - gmiM - variablePayM)) / 1.02405;
+  if (basicIfHighTier >= 15000) return Math.round(basicIfHighTier);
+
+  // Case B: assume Basic < 15,000 (12% PF). Clamped at 0 — Part 11 forbids
+  // negative salary values. Reachable with badly mismatched inputs (e.g.
+  // GMI alone exceeding a very low CTC); when that happens Gross/Net will
+  // also go negative even with Basic pinned at 0, which is exactly what
+  // ctcConfigWarning below is for — that's a genuine input-mismatch
+  // problem no Basic value can paper over, not something to hide.
+  const basicIfLowTier = (0.5 * (ctcM - gmiM - variablePayM)) / 1.08405;
+  return Math.round(Math.max(basicIfLowTier, 0));
 }
 
 export default function FormattedLetterPage() {
@@ -235,6 +295,26 @@ export default function FormattedLetterPage() {
     signatureFileId: "",
   });
   const [salary, setSalary] = useState<Record<string, string>>({});
+  // NEW — set directly from the raw numeric grossM at calculation time
+  // (see computeAndSetSalary), NOT re-derived by re-parsing the formatted
+  // grossA display string afterward: every numeric parse in this file
+  // strips non-digit characters via /[^\d.]/, which silently strips a
+  // leading "-" too, so a negative Gross would otherwise be
+  // misread back as positive and this check would never fire.
+  const [grossIsNegative, setGrossIsNegative] = useState(false);
+  // NEW — Basic auto/manual state, purely for the UI label below. A
+  // separate piece of actual React state from basicManuallyEdited (a ref,
+  // intentionally not reactive so flipping it doesn't itself retrigger
+  // effects) — refs don't cause re-renders, so a label reading the ref
+  // directly would silently never update on screen.
+  const [basicMode, setBasicMode] = useState<"AUTO" | "MANUAL">("AUTO");
+  // NEW — tracks whether HR has manually typed into Basic themselves. When
+  // false, Basic auto-derives to satisfy the 50%-of-Gross floor every time
+  // CTC/GMI/Variable Pay change. When true (HR typed a specific number),
+  // that value is respected and left alone — only the warning badge
+  // reacts, never a silent overwrite of a deliberate manual entry. A ref,
+  // not state: flipping it must never itself trigger a re-render/effect.
+  const basicManuallyEdited = useRef(false);
   // NEW — Variable Pay toggle for the Compensation section. Purely a
   // frontend UI concern (not sent to the backend as its own field — the
   // backend only needs the resulting variablePayM/variablePayA amounts,
@@ -350,8 +430,10 @@ export default function FormattedLetterPage() {
     if (!meta.dateOfJoining || !n || n <= 0) return;
     const unit = meta.contractDurationUnit === "DAYS" ? "day" : "month";
     const end = dayjs(meta.dateOfJoining).add(n, unit).format("YYYY-MM-DD");
+    // Seeds a normally-editable field from Date of Joining/Duration — same
+    // justification as the CTC-in-Words effect below.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMetaField("employmentEndDate", end);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     meta.contractDuration,
     meta.contractDurationUnit,
@@ -362,23 +444,32 @@ export default function FormattedLetterPage() {
   // NEW — CTC in Words auto-fills from Annual CTC (Appointment/C2H only,
   // the only letter types with a CTC in Words field), using the Indian
   // numbering system (Lakhs/Crores) to match the rest of the letter.
+  // Deliberately an effect, not a plain computed/derived value: like every
+  // other salary cell in this form, ctcInWords must stay freely editable
+  // afterward (a manually-typed override persists until CTC changes again)
+  // — this "seed from a source, then allow free local override" pattern is
+  // one of React's own documented valid effect use-cases, hence the
+  // explicit disable below rather than restructuring the state model.
   useEffect(() => {
     if (letterType !== "APPOINTMENT" && letterType !== "C2H") return;
     const n = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
     if (!n || n <= 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMetaField("ctcInWords", numberToIndianWords(n));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.ctcAnnual, letterType]);
 
   /**
-   * Auto-fill the salary structure from Annual CTC + a manually-entered Basic
-   * Salary (HR types Basic into the table first, then clicks this).
-   *
-   * Only formulas explicitly confirmed are applied:
+   * Auto-fill/reset the salary structure from Annual CTC — computes Basic
+   * fresh via the 50%-of-Gross rule (discarding any prior manual override,
+   * an explicit "trust the formula again" action), then everything else
+   * from that Basic. Only formulas explicitly confirmed are applied:
+   *   Basic = solved so Basic = 50% of Gross (see calcBasicFor50PercentFloor)
    *   HRA = 40% of Basic
    *   Gratuity = 4.81% of Basic
-   *   Employer PF = ₹1,800/mo fixed (₹21,600/yr)
-   *   Employee PF = ₹1,800/mo fixed (₹21,600/yr)
+   *   Employee/Employer PF = 12% of Basic when Basic < ₹15,000 (PF wage
+   *                          ceiling), else a flat ₹1,800/mo — same rule,
+   *                          same calcMonthlyPF() function, for both, so
+   *                          ₹1,800 is never hardcoded in two places.
    *   Professional Tax (KA) = ₹200/mo fixed (₹2,400/yr)
    *   Total Employer Cost = Employer PF + Gratuity + Group Insurance
    *                          + Variable Pay (when toggled on)
@@ -388,10 +479,9 @@ export default function FormattedLetterPage() {
    *   Net Take Home = Gross − Total Deductions
    *   Total CTC = the entered target CTC
    *
-   * Leave Travel Allowance, Group Health/Accident Insurance, and Variable
-   * Pay have no confirmed formula — they're left as whatever is already
-   * typed in those cells (0 if empty/toggled off), never invented or
-   * overwritten with a guessed value.
+   * Leave Travel Allowance, GMI, and Variable Pay have no confirmed
+   * formula of their own — they're read as whatever is already typed in
+   * those cells (0 if empty/toggled off), never invented or overwritten.
    */
   const autoFillSalary = () => {
     const ctc = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
@@ -399,36 +489,39 @@ export default function FormattedLetterPage() {
       toast.error("Enter a valid Annual CTC first.");
       return;
     }
-    const basicFromAnnual = Number(
-      (salary.basicA || "").replace(/[^\d.]/g, ""),
-    );
-    const basicFromMonthly = Number(
-      (salary.basicM || "").replace(/[^\d.]/g, ""),
-    );
-    const basicA = basicFromAnnual || basicFromMonthly * 12;
-    if (!basicA || basicA <= 0) {
-      toast.error(
-        "Enter Basic Salary in the table first, then auto-fill the rest.",
-      );
-      return;
-    }
+    basicManuallyEdited.current = false;
+    setBasicMode("AUTO");
+    computeAndSetSalary(ctc);
+    toast.success("Salary structure auto-filled — Basic set to 50% of Gross");
+  };
 
-    const basicM = Math.round(basicA / 12);
-    const hraM = Math.round(basicM * 0.4);
-    const gratuityM = Math.round(basicM * 0.0481);
-    const pfEmployerM = 1800;
-    const pfEmployeeM = 1800;
-    const ptM = 200;
-    // Not overwritten with an invented formula — keep whatever is already
-    // there (0 if the cell is still empty).
-    const ltaM = Math.round(
-      (Number((salary.ltaA || "").replace(/[^\d.]/g, "")) || 0) / 12,
-    );
-    const insuranceM = Math.round(
+  /**
+   * The actual calculation, extracted out of autoFillSalary() so the exact
+   * same formula (not a duplicate/second copy) is also silently re-run by
+   * the live-recalculation effect below whenever CTC, Basic, LTA, GMI, or
+   * Variable Pay change — Part 8/10's "edit any field, dependent totals
+   * recompute automatically" without inventing a second calculation engine.
+   *
+   * Basic is either:
+   *  - auto-derived to satisfy the 50%-of-Gross floor (default), or
+   *  - read as-is from whatever HR manually typed, if basicManuallyEdited
+   *    is true — a deliberate override is respected, never silently
+   *    reverted; only the floor warning reacts to it.
+   *
+   * HRA/Gratuity/PF/PT/Gross/Special/Net/Employer Cost/CTC totals are
+   * NOT independently overridable the same way — they're legally exact
+   * percentages of Basic (e.g. Gratuity must be 4.81% of Basic), so
+   * letting a manual edit to one of those permanently stick would produce
+   * a compensation document that's *incorrect*, not just non-default.
+   * They stay editable text (nothing crashes if HR types in one) but
+   * always reflect the correct formula the next time any true input
+   * changes — the same way a spreadsheet formula cell behaves.
+   */
+  const computeAndSetSalary = (ctc: number) => {
+    const ctcM = Math.round(ctc / 12);
+    const gmiM = Math.round(
       (Number((salary.insuranceA || "").replace(/[^\d.]/g, "")) || 0) / 12,
     );
-    // Only counted when the Variable Pay toggle is "Yes" — otherwise treated
-    // as 0, exactly as the requirement specifies.
     const variablePayM =
       hasVariablePay === "YES"
         ? Math.round(
@@ -437,8 +530,40 @@ export default function FormattedLetterPage() {
           )
         : 0;
 
-    const employerCostM = pfEmployerM + gratuityM + insuranceM + variablePayM;
-    const grossM = Math.round(ctc / 12) - employerCostM;
+    let basicM: number;
+    if (basicManuallyEdited.current) {
+      const basicFromAnnual = Number(
+        (salary.basicA || "").replace(/[^\d.]/g, ""),
+      );
+      const basicFromMonthly = Number(
+        (salary.basicM || "").replace(/[^\d.]/g, ""),
+      );
+      basicM = Math.round((basicFromAnnual || basicFromMonthly * 12) / 12);
+      // HR switched to manual mode but hasn't actually typed a valid
+      // number yet — nothing to compute from, wait for real input rather
+      // than silently treating it as zero.
+      if (!basicM || basicM <= 0) return;
+    } else {
+      basicM = calcBasicFor50PercentFloor(ctcM, gmiM, variablePayM);
+    }
+
+    const hraM = Math.round(basicM * 0.4);
+    const gratuityM = Math.round(basicM * 0.0481);
+    const pfEmployerM = calcMonthlyPF(basicM);
+    const pfEmployeeM = calcMonthlyPF(basicM);
+    const ptM = 200;
+    // Not overwritten with an invented formula — keep whatever is already
+    // there (0 if the cell is still empty).
+    const ltaM = Math.round(
+      (Number((salary.ltaA || "").replace(/[^\d.]/g, "")) || 0) / 12,
+    );
+
+    const employerCostM = pfEmployerM + gratuityM + gmiM + variablePayM;
+    const grossM = ctcM - employerCostM;
+    // Set from the raw number, before formatting — see the state's own
+    // doc comment above for why re-parsing the display string later
+    // wouldn't work.
+    setGrossIsNegative(grossM < 0);
     const specialM = grossM - basicM - hraM - ltaM;
     const deductionsM = pfEmployeeM + ptM;
     const netM = grossM - deductionsM;
@@ -467,8 +592,8 @@ export default function FormattedLetterPage() {
       pfEmployerA: inr(a(pfEmployerM)),
       gratuityM: inr(gratuityM),
       gratuityA: inr(a(gratuityM)),
-      insuranceM: inr(insuranceM),
-      insuranceA: inr(a(insuranceM)),
+      insuranceM: inr(gmiM),
+      insuranceA: inr(a(gmiM)),
       // Only written when toggled on — when "No", these stay cleared (they
       // were already blanked out the moment the toggle was switched off).
       ...(hasVariablePay === "YES"
@@ -479,11 +604,89 @@ export default function FormattedLetterPage() {
         : {}),
       employerCostM: inr(employerCostM),
       employerCostA: inr(a(employerCostM)),
-      ctcMonthlyTotal: inr(Math.round(ctc / 12)),
+      ctcMonthlyTotal: inr(ctcM),
       ctcAnnualTotal: inr(ctc),
     });
-    toast.success("Salary structure auto-filled from CTC + Basic");
   };
+
+  // NEW — Part 6/10: seed Group Health/Accident Insurance with the
+  // configurable ₹1,250/month default the first time the Compensation
+  // section is relevant for this letter type, but ONLY if the field is
+  // still genuinely empty — never overwrites a value HR already typed or
+  // that came back from auto-fill. Same "seed once, then freely editable"
+  // justification as the CTC-in-Words effect above.
+  useEffect(() => {
+    if (isServiceLetter) return;
+    if (salary.insuranceM || salary.insuranceA) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSalary((s) => ({
+      ...s,
+      insuranceM: inr(DEFAULT_GMI_MONTHLY),
+      insuranceA: inr(DEFAULT_GMI_MONTHLY * 12),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isServiceLetter]);
+
+  // NEW — Part 8/10, fully live now: editing CTC, Basic, LTA, GMI, or
+  // Variable Pay recalculates every dependent total automatically, by
+  // silently re-running the exact same formula computeAndSetSalary()
+  // already uses for the "Auto-fill" button — not a second/duplicate
+  // calculation. These five are the only true independent inputs in the
+  // formula (everything else — HRA, Gratuity, PF, Gross, Special, Net,
+  // Employer Cost, CTC totals — is a pure function of them), so this
+  // covers "any field" without risking the circular/thrashing
+  // recalculation Part 10 warns against: recomputing always derives
+  // fresh from these five, never from a previously-derived value, so it
+  // converges in one pass every time (verified — see the accompanying
+  // report for the numeric trace).
+  useEffect(() => {
+    const ctc = Number((meta.ctcAnnual || "").replace(/[^\d.]/g, ""));
+    if (!ctc || ctc <= 0) return;
+    computeAndSetSalary(ctc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    meta.ctcAnnual,
+    salary.basicM,
+    salary.basicA,
+    salary.ltaM,
+    salary.ltaA,
+    salary.insuranceM,
+    salary.insuranceA,
+    salary.variablePayM,
+    salary.variablePayA,
+    hasVariablePay,
+  ]);
+
+  // NEW — Part 5: validation, never silent. Basic now DOES auto-set to
+  // 50% of Gross by default (see calcBasicFor50PercentFloor above), but
+  // HR can still manually type a different Basic — this badge is what
+  // catches that and warns, exactly as Part 5 asks ("do not silently
+  // allow an invalid salary structure"). A small ±₹15/yr tolerance
+  // absorbs the unavoidable integer-rupee rounding in the auto-computed
+  // case itself, so the freshly auto-set value never spuriously triggers
+  // its own warning.
+  const basicA50FloorWarning = (() => {
+    const grossA = Number((salary.grossA || "").replace(/[^\d.]/g, ""));
+    const basicA = Number((salary.basicA || "").replace(/[^\d.]/g, ""));
+    if (!grossA || !basicA) return null;
+    const floor = Math.round(grossA / 2);
+    return basicA < floor - 15
+      ? `Basic salary is below the required 50% floor (₹${inr(floor)}/yr).`
+      : null;
+  })();
+
+  // NEW — Part 11: catches the case Basic-clamping alone can't fix — GMI
+  // and/or Variable Pay alone exceeding CTC. Clamping Basic at 0 (above)
+  // stops Basic itself from going negative, but Gross/Net would still go
+  // negative underneath it, which is a genuine input mismatch (e.g. the
+  // ₹1,250 GMI default left in place against an unrealistically low CTC),
+  // not something any Basic value can paper over. Surfaced clearly rather
+  // than silently producing a letter with negative pay figures. Reads the
+  // grossIsNegative state (set from the raw number during calculation),
+  // not the formatted grossA string — see that state's doc comment.
+  const ctcConfigWarning = grossIsNegative
+    ? "GMI and/or Variable Pay exceed the entered CTC — Gross Salary would be negative. Check these amounts before generating the letter."
+    : null;
 
   // NEW — extracted, unchanged, from the previous inline payload object so
   // both "Generate & Download PDF" and the new "Send Email" action build the
@@ -622,6 +825,25 @@ export default function FormattedLetterPage() {
         })()
       : salaryRows;
 
+  // NEW — the true independent inputs (Basic, LTA, GMI, Variable Pay) get
+  // bidirectional Monthly<->Annual sync the instant either is typed, so the
+  // live-recalc effect never has to guess which one is "current" for these
+  // — that guess is exactly what silently reverted a manually-typed value
+  // before. Pure formula-output rows (HRA, Gratuity, PF, Gross, Special,
+  // Net, Employer Cost, CTC totals) are untouched — same single
+  // setSalaryField call as always, since those always get overwritten by
+  // the next recompute anyway (see computeAndSetSalary's doc comment for
+  // why that's the correct, legally-safe behavior for those specifically).
+  const trueInputRows = new Set([
+    "basicM",
+    "basicA",
+    "ltaM",
+    "ltaA",
+    "insuranceM",
+    "insuranceA",
+    "variablePayM",
+    "variablePayA",
+  ]);
   const salaryColumns = [
     { title: "Component", dataIndex: "label", key: "label" },
     {
@@ -632,7 +854,23 @@ export default function FormattedLetterPage() {
           size="small"
           style={{ textAlign: "right", width: 120 }}
           value={salary[r.m] ?? ""}
-          onChange={(e) => setSalaryField(r.m, e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (trueInputRows.has(r.m)) {
+              if (r.m === "basicM") {
+                basicManuallyEdited.current = true;
+                setBasicMode("MANUAL");
+              }
+              const n = Number(v.replace(/[^\d.]/g, ""));
+              setSalary((s) => ({
+                ...s,
+                [r.m]: v,
+                [r.a]: v.trim() === "" || isNaN(n) ? "" : inr(n * 12),
+              }));
+              return;
+            }
+            setSalaryField(r.m, v);
+          }}
         />
       ),
     },
@@ -644,7 +882,24 @@ export default function FormattedLetterPage() {
           size="small"
           style={{ textAlign: "right", width: 120 }}
           value={salary[r.a] ?? ""}
-          onChange={(e) => setSalaryField(r.a, e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (trueInputRows.has(r.a)) {
+              if (r.a === "basicA") {
+                basicManuallyEdited.current = true;
+                setBasicMode("MANUAL");
+              }
+              const n = Number(v.replace(/[^\d.]/g, ""));
+              setSalary((s) => ({
+                ...s,
+                [r.a]: v,
+                [r.m]:
+                  v.trim() === "" || isNaN(n) ? "" : inr(Math.round(n / 12)),
+              }));
+              return;
+            }
+            setSalaryField(r.a, v);
+          }}
         />
       ),
     },
@@ -964,8 +1219,9 @@ export default function FormattedLetterPage() {
                 </AntButton>
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    Enter Basic Salary in the table below first, then click
-                    auto-fill.
+                    Basic auto-sets to 50% of Gross the moment CTC is entered —
+                    the whole table then stays live as you edit Basic, LTA, GMI,
+                    or Variable Pay.
                   </Text>
                 </div>
               </Col>
@@ -1114,6 +1370,22 @@ export default function FormattedLetterPage() {
               <Space>
                 <FileTextOutlined style={{ color: "#00a8f0" }} />
                 Salary Structure
+                {/* NEW — Basic auto/manual indicator. Reads basicMode
+                    (actual React state), not the basicManuallyEdited ref
+                    directly — a ref never triggers a re-render, so a label
+                    reading it would silently go stale on screen. */}
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "normal",
+                    marginLeft: 4,
+                  }}
+                >
+                  {basicMode === "AUTO"
+                    ? "· Basic: Auto (50% of Gross)"
+                    : "· Basic: Manual (click Auto-fill to reset)"}
+                </Text>
               </Space>
             }
             extra={
@@ -1133,6 +1405,22 @@ export default function FormattedLetterPage() {
               dataSource={visibleSalaryRows}
               pagination={false}
             />
+            {ctcConfigWarning && (
+              <Text
+                type="danger"
+                style={{ display: "block", marginTop: 8, fontSize: 12 }}
+              >
+                ⚠ {ctcConfigWarning}
+              </Text>
+            )}
+            {basicA50FloorWarning && (
+              <Text
+                type="warning"
+                style={{ display: "block", marginTop: 8, fontSize: 12 }}
+              >
+                ⚠ {basicA50FloorWarning}
+              </Text>
+            )}
           </Card>
         )}
 
