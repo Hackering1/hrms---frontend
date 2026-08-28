@@ -395,7 +395,13 @@ export default function AttendancePage() {
       dataIndex: "status",
       key: "status",
       render: (v: string) => (
-        <Tag color={v === "PRESENT" ? "success" : "default"}>{v}</Tag>
+        <Tag
+          color={
+            v === "PRESENT" ? "success" : v === "LEAVE" ? "blue" : "default"
+          }
+        >
+          {v}
+        </Tag>
       ),
     },
     {
@@ -768,7 +774,11 @@ export default function AttendancePage() {
                         >
                           <Tag
                             color={
-                              r.status === "PRESENT" ? "success" : "default"
+                              r.status === "PRESENT"
+                                ? "success"
+                                : r.status === "LEAVE"
+                                  ? "blue"
+                                  : "default"
                             }
                             style={{ fontSize: 10 }}
                           >
