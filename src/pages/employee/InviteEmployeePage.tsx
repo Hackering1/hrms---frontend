@@ -66,18 +66,6 @@ export default function InviteEmployeePage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [form, setForm] = useState<InviteForm>({});
-  // BUGFIX ("Employee code already exists" on a single click): handleSend is
-  // async and does a freshness check (network round-trip) BEFORE calling
-  // send.mutate(). send.isPending stays false for that whole window, so the
-  // Send Invitation button showed no loading state yet — a second click (or
-  // an impatient double-click) during that gap re-entered handleSend, both
-  // calls passed the freshness check against the same not-yet-used
-  // suggested code, and both then called send.mutate(). The first request
-  // created the employee; the second was correctly rejected by the backend's
-  // uniqueness check, surfacing as this error. This flag blocks any
-  // re-entrant call to handleSend for the whole duration (freshness check +
-  // mutation), independent of send.isPending.
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const set = (k: keyof InviteForm, v: unknown) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -188,46 +176,48 @@ export default function InviteEmployeePage() {
   }
 
   const handleSend = async () => {
-    // Re-entrancy guard: ignore a second call (double-click, or a click that
-    // lands during the freshness-check network round-trip below) while a
-    // send is already in flight. See isSubmitting declaration above.
-    if (isSubmitting) return;
     if (missing.length > 0) {
       toast.error("Please fill: " + missing.join(", "));
       return;
     }
-    setIsSubmitting(true);
-    try {
-      // BUGFIX ("Employee code already exists"): the auto-suggested code can go
-      // stale between page-load and submit — e.g. someone else's invite (or an
-      // earlier attempt in this same session) already used it in the meantime.
-      // Only relevant when the user is relying on the auto-suggestion (didn't
-      // type their own code); re-check the next available code right before
-      // sending so a stale suggestion is never submitted silently.
-      if (!form.employeeCode) {
-        const fresh = await qc.fetchQuery({
+    // BUGFIX ("Employee code already exists"): the auto-suggested code can go
+    // stale between page-load and submit — e.g. someone else's invite (or an
+    // earlier attempt in this same session) already used it in the meantime.
+    // Only relevant when the user is relying on the auto-suggestion (didn't
+    // type their own code); re-check the next available code right before
+    // sending so a stale suggestion is never submitted silently.
+    if (!form.employeeCode) {
+      let fresh: { employeeCode: string };
+      try {
+        fresh = await qc.fetchQuery({
           queryKey: ["employees", "new-defaults"],
           queryFn: () =>
             resourceService.get<{ employeeCode: string }>(
               "/employees/new-defaults",
             ),
         });
-        if (fresh.employeeCode !== employeeCode) {
-          qc.setQueryData(["employees", "new-defaults"], fresh);
-          toast.error(
-            `The suggested employee code changed to ${fresh.employeeCode} — please review and click Send Invitation again.`,
-          );
-          return;
-        }
+      } catch {
+        // BUGFIX (hardening): if this verification check itself fails — e.g.
+        // a WiFi drop (net::ERR_NETWORK_CHANGED) — we can no longer be sure
+        // the code on screen is still free. Block the submit instead of
+        // silently sending a possibly-stale code. This is exactly the gap
+        // that let a stale "TN 010" go out earlier: the background refresh
+        // failed, the field kept showing the old value, and the click still
+        // went ahead and submitted it.
+        toast.error(
+          "Couldn't verify the employee code is still available (network issue) — please check your connection and click Send Invitation again.",
+        );
+        return;
       }
-      // mutateAsync rejects on failure so this function's own promise settles
-      // only once the request is fully done either way; the mutation's
-      // onError above already shows the toast, so just swallow it here to
-      // avoid an unhandled-rejection warning.
-      await send.mutateAsync().catch(() => {});
-    } finally {
-      setIsSubmitting(false);
+      if (fresh.employeeCode !== employeeCode) {
+        qc.setQueryData(["employees", "new-defaults"], fresh);
+        toast.error(
+          `The suggested employee code changed to ${fresh.employeeCode} — please review and click Send Invitation again.`,
+        );
+        return;
+      }
     }
+    send.mutate();
   };
 
   return (
@@ -353,8 +343,7 @@ export default function InviteEmployeePage() {
         <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
           <AntButton
             type="primary"
-            loading={isSubmitting || send.isPending}
-            disabled={isSubmitting || send.isPending}
+            loading={send.isPending}
             onClick={handleSend}
           >
             Send Invitation
