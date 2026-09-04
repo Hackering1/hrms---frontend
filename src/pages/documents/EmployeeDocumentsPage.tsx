@@ -216,6 +216,13 @@ export default function EmployeeDocumentsPage() {
                 value={employeeId || undefined}
                 onChange={(v) => setEmployeeId(v)}
                 placeholder="— Select —"
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
                 options={pickerPeople.map((e: ResourceRecord) => ({
                   value: e.id,
                   label: `${e.employeeCode} — ${e.firstName} ${e.lastName}`,
