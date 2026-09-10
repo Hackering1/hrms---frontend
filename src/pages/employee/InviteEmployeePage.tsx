@@ -141,6 +141,10 @@ export default function InviteEmployeePage() {
       );
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["employees", "invitations"] });
+      // BUGFIX: this code has now been used, so the cached "next suggested
+      // code" is stale — invalidate it so the next Invite Employee visit
+      // fetches a fresh one instead of re-suggesting the code just taken.
+      qc.invalidateQueries({ queryKey: ["employees", "new-defaults"] });
       navigate("/employees/invitations");
     },
     onError: (err: any) => {
@@ -171,10 +175,47 @@ export default function InviteEmployeePage() {
     }
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (missing.length > 0) {
       toast.error("Please fill: " + missing.join(", "));
       return;
+    }
+    // BUGFIX ("Employee code already exists"): the auto-suggested code can go
+    // stale between page-load and submit — e.g. someone else's invite (or an
+    // earlier attempt in this same session) already used it in the meantime.
+    // Only relevant when the user is relying on the auto-suggestion (didn't
+    // type their own code); re-check the next available code right before
+    // sending so a stale suggestion is never submitted silently.
+    if (!form.employeeCode) {
+      let fresh: { employeeCode: string };
+      try {
+        fresh = await qc.fetchQuery({
+          queryKey: ["employees", "new-defaults"],
+          queryFn: () =>
+            resourceService.get<{ employeeCode: string }>(
+              "/employees/new-defaults",
+            ),
+        });
+      } catch {
+        // BUGFIX (hardening): if this verification check itself fails — e.g.
+        // a WiFi drop (net::ERR_NETWORK_CHANGED) — we can no longer be sure
+        // the code on screen is still free. Block the submit instead of
+        // silently sending a possibly-stale code. This is exactly the gap
+        // that let a stale "TN 010" go out earlier: the background refresh
+        // failed, the field kept showing the old value, and the click still
+        // went ahead and submitted it.
+        toast.error(
+          "Couldn't verify the employee code is still available (network issue) — please check your connection and click Send Invitation again.",
+        );
+        return;
+      }
+      if (fresh.employeeCode !== employeeCode) {
+        qc.setQueryData(["employees", "new-defaults"], fresh);
+        toast.error(
+          `The suggested employee code changed to ${fresh.employeeCode} — please review and click Send Invitation again.`,
+        );
+        return;
+      }
     }
     send.mutate();
   };

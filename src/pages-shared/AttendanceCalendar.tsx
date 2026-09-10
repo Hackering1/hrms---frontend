@@ -94,6 +94,7 @@ export default function AttendanceCalendar({
     | "present"
     | "absent"
     | "half"
+    | "leave"
     | "holiday"
     | "weekend"
     | "none";
@@ -116,6 +117,7 @@ export default function AttendanceCalendar({
         return { kind: "absent", label: "Absent", regularized };
       if (s === "HALF_DAY")
         return { kind: "half", label: "Half day", regularized };
+      if (s === "LEAVE") return { kind: "leave", label: "Leave", regularized };
       return { kind: "present", label: att.status, regularized };
     }
     if (holiday)
@@ -132,6 +134,7 @@ export default function AttendanceCalendar({
     present: { bg: "#dcfce7", fg: "#166534", border: "#bbf7d0" },
     absent: { bg: "#fee2e2", fg: "#991b1b", border: "#fecaca" },
     half: { bg: "#fef3c7", fg: "#92400e", border: "#fde68a" },
+    leave: { bg: "#dbeafe", fg: "#1e40af", border: "#bfdbfe" },
     holiday: { bg: "#e0e7ff", fg: "#3730a3", border: "#c7d2fe" },
     weekend: { bg: "#f1f5f9", fg: "#94a3b8", border: "#e2e8f0" },
     none: { bg: "#ffffff", fg: "#334155", border: "#e2e8f0" },
@@ -178,7 +181,9 @@ export default function AttendanceCalendar({
                 ? "success"
                 : a.status === "ABSENT"
                   ? "error"
-                  : "default"
+                  : a.status === "LEAVE"
+                    ? "blue"
+                    : "default"
             }
           >
             {a.status}
@@ -335,6 +340,7 @@ export default function AttendanceCalendar({
             <Legend swatch="#bbf7d0" label="Present" />
             <Legend swatch="#fecaca" label="Absent" />
             <Legend swatch="#fde68a" label="Half day" />
+            <Legend swatch="#bfdbfe" label="Leave" />
             <Legend swatch="#c7d2fe" label="Holiday" />
             <Legend swatch="#e2e8f0" label="Weekend" />
             <Legend swatch="#22c55e" label="Regularized (REG badge)" />
