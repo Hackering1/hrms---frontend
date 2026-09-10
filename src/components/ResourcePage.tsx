@@ -48,13 +48,22 @@ const statusTagColor: Record<string, string> = {
   false: "default",
 };
 
-export default function ResourcePage({ config }: { config: ResourceConfig }) {
+export default function ResourcePage({
+  config,
+  permissionOverride,
+}: {
+  config: ResourceConfig;
+  // Optional: override the default canManage (SuperAdmin+Manager) check —
+  // e.g. Payroll screens pass canManagePayroll (SuperAdmin+HR_Admin only)
+  // so a Manager doesn't see edit/delete controls the backend would 403 on.
+  permissionOverride?: boolean;
+}) {
   const { list, create, update, remove } = useResource(
     config.endpoint,
     config.queryKey,
   );
   const { canManage } = useRole();
-  const allowManage = canManage;
+  const allowManage = permissionOverride ?? canManage;
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ResourceRecord | null>(null);

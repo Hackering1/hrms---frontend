@@ -8,6 +8,7 @@ import {
   UsersRound,
   BarChart3,
   Settings2,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -158,7 +159,41 @@ export const MODULES: Module[] = [
     key: "reports",
     label: "Reports",
     icon: BarChart3,
-    pages: [{ label: "Reports", path: "/reports" }],
+    pages: [
+      { label: "Reports", path: "/reports" },
+      // Every employee's own payslip history — not an HR/admin screen, so no
+      // roles restriction (backend scopes the data to "self" unless HR).
+      { label: "My Payslips", path: "/my-payslips" },
+    ],
+  },
+  {
+    key: "payroll",
+    label: "Payroll",
+    icon: Wallet,
+    // HR-tier only (effectively Super Admin today — see AppRoutes.tsx) —
+    // deliberately NOT Manager, since this is company financial/statutory
+    // data, matching backend @PreAuthorize on every /api/payroll/** admin
+    // endpoint. Employees still reach their own payslips via Reports > My Payslips.
+    roles: HR,
+    pages: [
+      {
+        label: "Salary Components",
+        path: "/payroll/salary-components",
+        roles: HR,
+      },
+      {
+        label: "Salary Structures",
+        path: "/payroll/salary-structures",
+        roles: HR,
+      },
+      { label: "Employee Salary", path: "/payroll/employee-salary", roles: HR },
+      { label: "Payroll Runs", path: "/payroll/runs", roles: HR },
+      {
+        label: "Statutory Settings",
+        path: "/payroll/statutory-settings",
+        roles: HR,
+      },
+    ],
   },
   {
     key: "admin",

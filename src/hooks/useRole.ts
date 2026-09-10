@@ -31,5 +31,11 @@ export function useRole() {
     // Leave approval is MANAGER-ONLY (matches backend on
     // PUT /api/leave-requests/{id}/decision).
     canApprove: isManager,
+    // Payroll admin (salary structures, running payroll, statutory settings):
+    // SUPER_ADMIN + HR_ADMIN only — deliberately NOT Manager, since this is
+    // company financial/statutory data, not routine team master data. Matches
+    // backend @PreAuthorize("hasAnyRole('SUPER_ADMIN','HR_ADMIN')") on every
+    // /api/payroll/** admin endpoint.
+    canManagePayroll: isSuperAdmin || isHrAdmin,
   };
 }

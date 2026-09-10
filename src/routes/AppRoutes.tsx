@@ -32,6 +32,12 @@ import InviteEmployeePage from "../pages/employee/InviteEmployeePage";
 import InvitationsPage from "../pages/employee/InvitationsPage";
 import PendingProfilesPage from "../pages/employee/PendingProfilesPage";
 import EmployeeOnboardingPage from "../pages/onboarding/EmployeeOnboardingPage";
+import SalaryComponentsPage from "../pages/payroll/SalaryComponentsPage";
+import SalaryStructuresPage from "../pages/payroll/SalaryStructuresPage";
+import EmployeeSalaryPage from "../pages/payroll/EmployeeSalaryPage";
+import PayrollRunsPage from "../pages/payroll/PayrollRunsPage";
+import StatutorySettingsPage from "../pages/payroll/StatutorySettingsPage";
+import MyPayslipsPage from "../pages/self-service/MyPayslipsPage";
 import { useAuthStore } from "../store/authStore";
 
 /**
@@ -91,6 +97,10 @@ export default function AppRoutes() {
             path="/organization/calendar"
             element={<CompanyCalendarPage />}
           />
+          {/* Every signed-in employee can see their own payslips; the backend
+              scopes /api/payroll/payslips/employee/{id} to self unless the
+              caller is SUPER_ADMIN/HR_ADMIN, so this is safe with no RoleRoute. */}
+          <Route path="/my-payslips" element={<MyPayslipsPage />} />
 
           {/* ---- Employee self-service only (removed from the Manager Portal) ---- */}
           <Route element={<RoleRoute allow={EMPLOYEE_ONLY} />}>
@@ -137,6 +147,27 @@ export default function AppRoutes() {
           {/* ---- HR / Super Admin only ---- */}
           <Route element={<RoleRoute allow={HR} />}>
             <Route path="/tickets" element={<TicketsPage />} />
+            {/* Payroll admin — deliberately HR-tier only (matches backend
+                @PreAuthorize("hasAnyRole('SUPER_ADMIN','HR_ADMIN')") on every
+                /api/payroll/** admin endpoint), NOT Manager, since this is
+                company financial/statutory data. */}
+            <Route
+              path="/payroll/salary-components"
+              element={<SalaryComponentsPage />}
+            />
+            <Route
+              path="/payroll/salary-structures"
+              element={<SalaryStructuresPage />}
+            />
+            <Route
+              path="/payroll/employee-salary"
+              element={<EmployeeSalaryPage />}
+            />
+            <Route path="/payroll/runs" element={<PayrollRunsPage />} />
+            <Route
+              path="/payroll/statutory-settings"
+              element={<StatutorySettingsPage />}
+            />
           </Route>
 
           {/* ---- Super Admin only — Invite Employee flow. Managers and
