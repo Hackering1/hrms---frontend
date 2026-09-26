@@ -8,7 +8,12 @@ export interface SalaryComponent {
   name: string;
   code: string;
   componentType: "EARNING" | "DEDUCTION" | "EMPLOYER_CONTRIBUTION";
-  calculationType: "FLAT" | "PERCENT_OF_CTC" | "PERCENT_OF_BASIC" | "REMAINDER";
+  calculationType:
+    | "FLAT"
+    | "PERCENT_OF_CTC"
+    | "PERCENT_OF_BASIC"
+    | "PERCENT_OF_GROSS"
+    | "REMAINDER";
   defaultPercentage?: number | null;
   isTaxable?: boolean;
   isStatutory?: boolean;
@@ -26,6 +31,9 @@ export interface SalaryStructureComponentLine {
   flatAmount?: number | null;
   isStatutory?: boolean;
   displayOrder?: number;
+  // Set (non-null) only for the Basic component: true when its percentage is
+  // below the 50% wage-code floor. Computed by the backend — informational only.
+  belowBasicFloor?: boolean | null;
 }
 
 export interface SalaryStructure {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useRole } from "../../hooks/useRole";
@@ -13,13 +14,30 @@ import {
 const CALC_TYPES = [
   { value: "PERCENT_OF_CTC", label: "% of CTC" },
   { value: "PERCENT_OF_BASIC", label: "% of Basic" },
+  { value: "PERCENT_OF_GROSS", label: "% of Gross Salary" },
   { value: "FLAT", label: "Flat amount" },
   { value: "REMAINDER", label: "Remainder of CTC" },
 ];
 
-function emptyLine(componentId: number): SalaryStructureComponentLine {
+// Wage-code floor: Basic (or Basic+DA) must be at least 50% of the CTC/Gross
+// split it's defined against. Kept as one constant so the default and the
+// warning badge below can never drift apart.
+const BASIC_FLOOR_PERCENT = 50;
+
+function emptyLine(component: SalaryComponent): SalaryStructureComponentLine {
+  // The Basic component drives PERCENT_OF_BASIC components (e.g. HRA) and is
+  // subject to the wage-code floor, so default it to the compliant 50% of CTC
+  // instead of the generic Flat-amount default every other component gets.
+  if (component.code === "BASIC") {
+    return {
+      salaryComponentId: component.id!,
+      calculationType: "PERCENT_OF_CTC",
+      percentage: BASIC_FLOOR_PERCENT,
+      displayOrder: 0,
+    };
+  }
   return {
-    salaryComponentId: componentId,
+    salaryComponentId: component.id!,
     calculationType: "FLAT",
     displayOrder: 0,
   };
@@ -78,7 +96,7 @@ function StructureEditor({
       );
       return;
     }
-    setLines([...lines, emptyLine(unused.id!)]);
+    setLines([...lines, emptyLine(unused)]);
   };
 
   const updateLine = (
@@ -91,7 +109,9 @@ function StructureEditor({
   const removeLine = (idx: number) =>
     setLines(lines.filter((_, i) => i !== idx));
 
-  return (
+  // Rendered via a portal straight into document.body — see the note at the
+  // bottom of this file for why that matters for this particular modal.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 space-y-5">
         <h3 className="text-lg font-semibold text-slate-800">
@@ -131,9 +151,9 @@ function StructureEditor({
           </div>
 
           <p className="text-xs text-slate-400">
-            Order matters: Basic (% of CTC) is resolved first, then % of Basic
-            (e.g. HRA), then flat amounts, then one Remainder component absorbs
-            whatever's left of the CTC.
+            Order matters: Basic (% of CTC) and % of Gross Salary components are
+            resolved first, then % of Basic (e.g. HRA), then flat amounts, then
+            one Remainder component absorbs whatever's left of the CTC.
           </p>
 
           <div className="space-y-2">
@@ -175,7 +195,8 @@ function StructureEditor({
                     ))}
                   </select>
                   {(line.calculationType === "PERCENT_OF_CTC" ||
-                    line.calculationType === "PERCENT_OF_BASIC") && (
+                    line.calculationType === "PERCENT_OF_BASIC" ||
+                    line.calculationType === "PERCENT_OF_GROSS") && (
                     <input
                       type="number"
                       placeholder="%"
@@ -214,6 +235,17 @@ function StructureEditor({
                       computed automatically.
                     </span>
                   )}
+                  {comp?.code === "BASIC" &&
+                    (line.calculationType === "PERCENT_OF_CTC" ||
+                      line.calculationType === "PERCENT_OF_GROSS") &&
+                    line.percentage != null &&
+                    line.percentage < BASIC_FLOOR_PERCENT && (
+                      <span className="col-span-12 inline-flex w-fit items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        Below {BASIC_FLOOR_PERCENT}% — Basic (+DA) should be at
+                        least {BASIC_FLOOR_PERCENT}% of total remuneration per
+                        the wage-code definition.
+                      </span>
+                    )}
                 </div>
               );
             })}
@@ -239,9 +271,30 @@ function StructureEditor({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
+
+/**
+ * ROOT CAUSE (Salary Structure page "not working" — modal appeared with its
+ * title and Name field cut off above the visible area):
+ *
+ * This modal used a hand-rolled `fixed inset-0 ...` overlay rendered inline in
+ * the page tree, unlike the working "Add Salary Component" modal (which goes
+ * through antd's <Modal>, portaled to document.body by default). Every routed
+ * page in MainLayout is wrapped in a div with the `animate-fade-up` CSS
+ * animation (`transform: translateY(6px) -> none`). Browsers (Chromium in
+ * particular) keep an element with a transform-animating, fill-mode "both"
+ * animation as its own containing block for `position: fixed` descendants
+ * even after the animation finishes — a well-known CSS/browser quirk. So this
+ * modal was being sized and centered relative to that small content wrapper
+ * (only as tall as the page's own content) instead of the real viewport,
+ * clipping its top. Rendering it through createPortal into document.body
+ * — exactly how the shared Modal/antd patterns already do it elsewhere in
+ * this app — escapes that wrapper and fixes it without touching global CSS,
+ * MainLayout, or any other page.
+ */
 
 export default function SalaryStructuresPage() {
   const { canManagePayroll } = useRole();

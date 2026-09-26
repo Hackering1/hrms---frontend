@@ -38,6 +38,7 @@ const config: ResourceConfig = {
         { value: "FLAT", label: "Flat amount" },
         { value: "PERCENT_OF_CTC", label: "% of CTC" },
         { value: "PERCENT_OF_BASIC", label: "% of Basic" },
+        { value: "PERCENT_OF_GROSS", label: "% of Gross Salary" },
         { value: "REMAINDER", label: "Remainder of CTC" },
       ],
     },
