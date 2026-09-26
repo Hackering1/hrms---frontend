@@ -37,6 +37,7 @@ import SalaryStructuresPage from "../pages/payroll/SalaryStructuresPage";
 import EmployeeSalaryPage from "../pages/payroll/EmployeeSalaryPage";
 import PayrollRunsPage from "../pages/payroll/PayrollRunsPage";
 import StatutorySettingsPage from "../pages/payroll/StatutorySettingsPage";
+import PayslipGeneratorPage from "../pages/payroll/PayslipGeneratorPage";
 import MyPayslipsPage from "../pages/self-service/MyPayslipsPage";
 import { useAuthStore } from "../store/authStore";
 
@@ -164,6 +165,10 @@ export default function AppRoutes() {
               element={<EmployeeSalaryPage />}
             />
             <Route path="/payroll/runs" element={<PayrollRunsPage />} />
+            <Route
+              path="/payroll/payslip-generator"
+              element={<PayslipGeneratorPage />}
+            />
             <Route
               path="/payroll/statutory-settings"
               element={<StatutorySettingsPage />}

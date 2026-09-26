@@ -189,6 +189,11 @@ export const MODULES: Module[] = [
       { label: "Employee Salary", path: "/payroll/employee-salary", roles: HR },
       { label: "Payroll Runs", path: "/payroll/runs", roles: HR },
       {
+        label: "Payslip Generator",
+        path: "/payroll/payslip-generator",
+        roles: HR,
+      },
+      {
         label: "Statutory Settings",
         path: "/payroll/statutory-settings",
         roles: HR,

@@ -18,13 +18,13 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
       {/* Desktop rail */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block print:hidden">
         <ModuleRail />
       </div>
 
       {/* Mobile drawer */}
       {drawer && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden print:hidden">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setDrawer(false)}
@@ -36,8 +36,10 @@ export default function MainLayout() {
       )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <AppTopBar onMenu={() => setDrawer(true)} />
-        <SubNav />
+        <div className="print:hidden">
+          <AppTopBar onMenu={() => setDrawer(true)} />
+          <SubNav />
+        </div>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {mustChange && (
             <div className="mb-4 flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
