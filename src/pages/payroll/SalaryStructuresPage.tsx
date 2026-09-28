@@ -28,7 +28,7 @@ function emptyLine(component: SalaryComponent): SalaryStructureComponentLine {
   // The Basic component drives PERCENT_OF_BASIC components (e.g. HRA) and is
   // subject to the wage-code floor, so default it to the compliant 50% of CTC
   // instead of the generic Flat-amount default every other component gets.
-  if (component.code === "BASIC") {
+  if (component.name === "Basic Salary") {
     return {
       salaryComponentId: component.id!,
       calculationType: "PERCENT_OF_CTC",
@@ -235,7 +235,7 @@ function StructureEditor({
                       computed automatically.
                     </span>
                   )}
-                  {comp?.code === "BASIC" &&
+                  {comp?.name === "Basic Salary" &&
                     (line.calculationType === "PERCENT_OF_CTC" ||
                       line.calculationType === "PERCENT_OF_GROSS") &&
                     line.percentage != null &&
