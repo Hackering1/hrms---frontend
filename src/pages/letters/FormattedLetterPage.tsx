@@ -264,13 +264,20 @@ export default function FormattedLetterPage() {
   // this as a new candidate" suggestion row while the user is typing.
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [letterType, setLetterType] = useState<
-    "OFFER" | "APPOINTMENT" | "RELIEVING" | "EXPERIENCE" | "INTERNSHIP" | "C2H"
+    | "OFFER"
+    | "APPOINTMENT"
+    | "RELIEVING"
+    | "EXPERIENCE"
+    | "INTERNSHIP"
+    | "INTERNSHIP_OFFER"
+    | "C2H"
   >("OFFER");
 
   const isServiceLetter =
     letterType === "RELIEVING" ||
     letterType === "EXPERIENCE" ||
     letterType === "INTERNSHIP";
+  const isInternshipOffer = letterType === "INTERNSHIP_OFFER";
   const [meta, setMeta] = useState<Record<string, string>>({
     letterDate: dayjs().format("YYYY-MM-DD"),
     place: "Bangalore",
@@ -280,6 +287,13 @@ export default function FormattedLetterPage() {
     // responsibilities/technologies/contributions. Blank by default; never
     // hardcoded.
     internshipDetails: "",
+    internshipCompensationType: "UNPAID",
+    internshipStipend: "",
+    internshipDepartment: "",
+    internshipReportingManager: "",
+    internshipWorkingDays: "",
+    internshipStartTime: "",
+    internshipEndTime: "",
     designation: "",
     workLocation: "Bangalore",
     // NEW — employment type shown in Offer/Appointment letters. Defaults to
@@ -700,9 +714,11 @@ export default function FormattedLetterPage() {
           ? "Experience_Relieving"
           : letterType === "INTERNSHIP"
             ? "Internship"
-            : letterType === "C2H"
-              ? "Contract_to_Hire_Offer"
-              : "Offer";
+            : letterType === "INTERNSHIP_OFFER"
+              ? "Internship_Offer"
+              : letterType === "C2H"
+                ? "Contract_to_Hire_Offer"
+                : "Offer";
 
   const buildLetterPayload = () => ({
     // "" (unmatched/typed name) must go as null, not "" — the backend
@@ -791,14 +807,25 @@ export default function FormattedLetterPage() {
   // unaffected — their address is enriched server-side as before.
   const candidateAddressOk = !!employeeId || !!candidateAddress.trim();
 
-  const canGenerate = isServiceLetter
-    ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
-    : !!employeeName &&
-      !!meta.designation &&
-      !!meta.ctcAnnual &&
-      contractDurationOk &&
-      candidateAddressOk &&
-      (letterType !== "C2H" || !!meta.employmentEndDate);
+  const internshipOfferValid =
+    !!employeeName &&
+    !!meta.designation &&
+    !!meta.dateOfJoining &&
+    !!meta.employmentEndDate &&
+    !!meta.internshipCompensationType &&
+    (meta.internshipCompensationType !== "PAID" ||
+      (!!meta.internshipStipend && Number(meta.internshipStipend) > 0));
+
+  const canGenerate = isInternshipOffer
+    ? internshipOfferValid
+    : isServiceLetter
+      ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
+      : !!employeeName &&
+        !!meta.designation &&
+        !!meta.ctcAnnual &&
+        contractDurationOk &&
+        candidateAddressOk &&
+        (letterType !== "C2H" || !!meta.employmentEndDate);
 
   // NEW — everything canGenerate already requires, PLUS a resolvable,
   // valid-format recipient email. Test 3: never allow a send with an
@@ -1059,6 +1086,10 @@ export default function FormattedLetterPage() {
                       value: "INTERNSHIP",
                       label: "Internship Experience Letter",
                     },
+                    {
+                      value: "INTERNSHIP_OFFER",
+                      label: "Internship Offer Letter",
+                    },
                   ]}
                 />
               </Field>
@@ -1172,7 +1203,13 @@ export default function FormattedLetterPage() {
                 </Col>
               )}
             <Col xs={24} sm={12}>
-              <Field label="Date of Joining">
+              <Field
+                label={
+                  isInternshipOffer
+                    ? "Internship Start Date"
+                    : "Date of Joining"
+                }
+              >
                 <DatePicker
                   style={{ width: "100%" }}
                   format="DD/MM/YYYY"
@@ -1186,7 +1223,7 @@ export default function FormattedLetterPage() {
                 />
               </Field>
             </Col>
-            {!isServiceLetter && (
+            {!isServiceLetter && !isInternshipOffer && (
               <Col xs={24}>
                 <Divider
                   titlePlacement="left"
@@ -1199,7 +1236,7 @@ export default function FormattedLetterPage() {
                 </Divider>
               </Col>
             )}
-            {!isServiceLetter && (
+            {!isServiceLetter && !isInternshipOffer && (
               <Col xs={24} sm={12}>
                 <Field label="Annual CTC (e.g. 4,22,268)">
                   <AntInput
@@ -1226,13 +1263,15 @@ export default function FormattedLetterPage() {
                 </div>
               </Col>
             )}
-            {(isServiceLetter || letterType === "C2H") && (
+            {(isServiceLetter || letterType === "C2H" || isInternshipOffer) && (
               <Col xs={24} sm={12}>
                 <Field
                   label={
                     letterType === "C2H"
                       ? "Contract End Date"
-                      : "Employment End Date"
+                      : isInternshipOffer
+                        ? "Internship End Date"
+                        : "Employment End Date"
                   }
                 >
                   <DatePicker
@@ -1252,6 +1291,111 @@ export default function FormattedLetterPage() {
                   />
                 </Field>
               </Col>
+            )}
+            {isInternshipOffer && (
+              <>
+                <Col xs={24} sm={12}>
+                  <Field label="Department">
+                    <AntInput
+                      value={meta.internshipDepartment}
+                      onChange={(e) =>
+                        setMetaField("internshipDepartment", e.target.value)
+                      }
+                      placeholder="e.g. Engineering"
+                    />
+                  </Field>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Field label="Reporting Manager">
+                    <AntInput
+                      value={meta.internshipReportingManager}
+                      onChange={(e) =>
+                        setMetaField(
+                          "internshipReportingManager",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Manager name / designation"
+                    />
+                  </Field>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Field label="Working Days">
+                    <AntInput
+                      value={meta.internshipWorkingDays}
+                      onChange={(e) =>
+                        setMetaField("internshipWorkingDays", e.target.value)
+                      }
+                      placeholder="e.g. Monday to Friday"
+                    />
+                  </Field>
+                </Col>
+                <Col xs={24} sm={6}>
+                  <Field label="Start Time">
+                    <AntInput
+                      value={meta.internshipStartTime}
+                      onChange={(e) =>
+                        setMetaField("internshipStartTime", e.target.value)
+                      }
+                      placeholder="e.g. 10:00 AM"
+                    />
+                  </Field>
+                </Col>
+                <Col xs={24} sm={6}>
+                  <Field label="End Time">
+                    <AntInput
+                      value={meta.internshipEndTime}
+                      onChange={(e) =>
+                        setMetaField("internshipEndTime", e.target.value)
+                      }
+                      placeholder="e.g. 7:00 PM"
+                    />
+                  </Field>
+                </Col>
+                <Col xs={24}>
+                  <Divider
+                    titlePlacement="left"
+                    style={{ margin: "0 0 4px" }}
+                    plain
+                  >
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      STIPEND / COMPENSATION
+                    </Text>
+                  </Divider>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Field label="Internship Compensation">
+                    <AntSelect
+                      style={{ width: "100%" }}
+                      value={meta.internshipCompensationType}
+                      onChange={(v) => {
+                        setMetaField("internshipCompensationType", v);
+                        if (v === "UNPAID")
+                          setMetaField("internshipStipend", "");
+                      }}
+                      options={[
+                        { value: "PAID", label: "Paid Internship" },
+                        { value: "UNPAID", label: "Unpaid Internship" },
+                      ]}
+                    />
+                  </Field>
+                </Col>
+                {meta.internshipCompensationType === "PAID" && (
+                  <Col xs={24} sm={12}>
+                    <Field label="Monthly Stipend (₹)">
+                      <AntInput
+                        type="number"
+                        min={1}
+                        value={meta.internshipStipend}
+                        onChange={(e) =>
+                          setMetaField("internshipStipend", e.target.value)
+                        }
+                        placeholder="e.g. 15000"
+                      />
+                    </Field>
+                  </Col>
+                )}
+              </>
             )}
             {letterType === "INTERNSHIP" && (
               <Col xs={24}>
@@ -1277,7 +1421,7 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter && (
+            {!isServiceLetter && !isInternshipOffer && (
               <Col xs={24} sm={12}>
                 <Field label="Variable Pay">
                   <AntSelect
@@ -1304,18 +1448,20 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter && hasVariablePay === "YES" && (
-              <Col xs={24} sm={12}>
-                <Field label="Variable Pay Amount (Annual)">
-                  <AntInput
-                    value={salary.variablePayA ?? ""}
-                    onChange={(e) =>
-                      setSalaryField("variablePayA", e.target.value)
-                    }
-                  />
-                </Field>
-              </Col>
-            )}
+            {!isServiceLetter &&
+              !isInternshipOffer &&
+              hasVariablePay === "YES" && (
+                <Col xs={24} sm={12}>
+                  <Field label="Variable Pay Amount (Annual)">
+                    <AntInput
+                      value={salary.variablePayA ?? ""}
+                      onChange={(e) =>
+                        setSalaryField("variablePayA", e.target.value)
+                      }
+                    />
+                  </Field>
+                </Col>
+              )}
             <Col xs={24}>
               <Divider
                 titlePlacement="left"
@@ -1364,7 +1510,7 @@ export default function FormattedLetterPage() {
           </Row>
         </Card>
 
-        {!isServiceLetter && (
+        {!isServiceLetter && !isInternshipOffer && (
           <Card
             title={
               <Space>
