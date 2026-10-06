@@ -15,6 +15,14 @@ export interface LetterPreview {
   content: string;
 }
 
+// Portal manager as offered in the Generate Letter "Reporting Manager" dropdown.
+export interface ReportingManagerOption {
+  id: string;
+  name: string;
+  employeeCode?: string;
+  designation?: string;
+}
+
 export const letterService = {
   async byEmployee(employeeId: string): Promise<GeneratedLetter[]> {
     const { data } = await apiClient.get<ApiResponse<GeneratedLetter[]>>(
@@ -56,6 +64,14 @@ export const letterService = {
       responseType: "blob",
     });
     return res.data as Blob;
+  },
+  // Portal managers for the Internship Offer Letter's Reporting Manager
+  // dropdown — served from the existing manager source, never hardcoded.
+  async reportingManagers(): Promise<ReportingManagerOption[]> {
+    const { data } = await apiClient.get<ApiResponse<ReportingManagerOption[]>>(
+      "/letter-pdf/reporting-managers",
+    );
+    return data.data;
   },
   // NEW — generate the same letter PDF server-side and email it, instead of
   // downloading it. Reuses the exact same payload shape as generatePdf().

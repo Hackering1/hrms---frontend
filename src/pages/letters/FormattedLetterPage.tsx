@@ -349,6 +349,18 @@ export default function FormattedLetterPage() {
     queryFn: () => resourceService.list("/designations"),
   });
 
+  // Portal managers for the Internship Offer Letter's Reporting Manager
+  // dropdown (existing manager source via a role-secured endpoint). Fetched
+  // only when that letter type is selected.
+  const reportingManagers = useQuery({
+    queryKey: ["letterReportingManagers"],
+    queryFn: () => letterService.reportingManagers(),
+    enabled: isInternshipOffer,
+  });
+  const [reportingManagerId, setReportingManagerId] = useState<
+    string | undefined
+  >(undefined);
+
   const selectedEmp = (employees.data ?? []).find(
     (e: ResourceRecord) => String(e.id) === employeeId,
   );
@@ -1307,15 +1319,42 @@ export default function FormattedLetterPage() {
                 </Col>
                 <Col xs={24} sm={12}>
                   <Field label="Reporting Manager">
-                    <AntInput
-                      value={meta.internshipReportingManager}
-                      onChange={(e) =>
-                        setMetaField(
-                          "internshipReportingManager",
-                          e.target.value,
-                        )
+                    <AntSelect
+                      style={{ width: "100%" }}
+                      showSearch
+                      allowClear
+                      loading={reportingManagers.isLoading}
+                      value={reportingManagerId}
+                      placeholder="Select reporting manager"
+                      options={(reportingManagers.data ?? []).map((m) => ({
+                        value: m.id,
+                        label: m.designation
+                          ? `${m.name} — ${m.designation}`
+                          : m.name,
+                        managerName: m.name,
+                      }))}
+                      filterOption={(input, option) =>
+                        String(option?.label ?? "")
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
                       }
-                      placeholder="Manager name / designation"
+                      onChange={(value, option) => {
+                        setReportingManagerId(value);
+                        const name = Array.isArray(option)
+                          ? ""
+                          : ((option as { managerName?: string })
+                              ?.managerName ?? "");
+                        setMetaField("internshipReportingManager", name);
+                      }}
+                      onClear={() => {
+                        setReportingManagerId(undefined);
+                        setMetaField("internshipReportingManager", "");
+                      }}
+                      notFoundContent={
+                        reportingManagers.isError
+                          ? "Couldn't load managers"
+                          : "No managers found"
+                      }
                     />
                   </Field>
                 </Col>
