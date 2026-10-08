@@ -210,11 +210,17 @@ export default function EmployeeSalaryPage() {
                     }
                   >
                     <option value="">— Select —</option>
-                    {(structures.data ?? []).map((s: SalaryStructure) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
+                    {(structures.data ?? [])
+                      .filter(
+                        (s: SalaryStructure) =>
+                          s.isActive !== false ||
+                          s.id === form.salaryStructureId,
+                      )
+                      .map((s: SalaryStructure) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
                   </select>
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
@@ -291,7 +297,10 @@ export default function EmployeeSalaryPage() {
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        tdsOverrideMonthly: Number(e.target.value) || undefined,
+                        tdsOverrideMonthly:
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
                       })
                     }
                   />

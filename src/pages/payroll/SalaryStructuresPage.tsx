@@ -70,7 +70,7 @@ function StructureEditor({
       const body: SalaryStructure = {
         name,
         description,
-        isActive: true,
+        isActive: structure?.isActive ?? true,
         components: lines,
       };
       return structure?.id
@@ -88,7 +88,9 @@ function StructureEditor({
 
   const addLine = () => {
     const unused = earningComponents.find(
-      (c) => !lines.some((l) => l.salaryComponentId === c.id),
+      (c) =>
+        c.isActive !== false &&
+        !lines.some((l) => l.salaryComponentId === c.id),
     );
     if (!unused) {
       toast.error(
@@ -175,11 +177,18 @@ function StructureEditor({
                       })
                     }
                   >
-                    {earningComponents.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {earningComponents
+                      .filter(
+                        (c) =>
+                          c.id === line.salaryComponentId ||
+                          (c.isActive !== false &&
+                            !lines.some((l) => l.salaryComponentId === c.id)),
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </select>
                   <select
                     className="col-span-3 rounded-md border border-slate-200 px-2 py-1.5 text-sm"

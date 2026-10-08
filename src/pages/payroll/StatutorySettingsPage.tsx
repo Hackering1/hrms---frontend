@@ -123,7 +123,16 @@ function PfSettingsCard() {
       </div>
       {canManagePayroll && (
         <button
-          onClick={() => save.mutate(active as PfSettings)}
+          // Drop id + effectiveFrom so the server stamps today's date: re-sending the
+          // old effectiveFrom would create a "new" revision dated the same as the one
+          // it replaces, and the two could not be ordered reliably.
+          onClick={() =>
+            save.mutate({
+              ...(active as PfSettings),
+              id: undefined,
+              effectiveFrom: undefined,
+            } as unknown as PfSettings)
+          }
           disabled={save.isPending || !form}
           className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
