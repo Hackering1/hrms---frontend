@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings2,
   Wallet,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -95,6 +96,14 @@ export const MODULES: Module[] = [
       { label: "Leave", path: "/leave" },
       { label: "Types", path: "/leave/types", roles: MANAGER_PLUS },
     ],
+  },
+  {
+    key: "timesheets",
+    label: "Timesheets",
+    icon: Clock,
+    // Everyone logs their own week; managers/HR also get Approvals + Projects tabs
+    // inside the page (the backend enforces the same roles).
+    pages: [{ label: "Timesheets", path: "/timesheets" }],
   },
   {
     key: "regularization",
