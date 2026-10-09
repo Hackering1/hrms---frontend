@@ -10,6 +10,7 @@ import {
   Settings2,
   Wallet,
   Clock,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -104,6 +105,14 @@ export const MODULES: Module[] = [
     // Everyone logs their own week; managers/HR also get Approvals + Projects tabs
     // inside the page (the backend enforces the same roles).
     pages: [{ label: "Timesheets", path: "/timesheets" }],
+  },
+  {
+    key: "expenses",
+    label: "Expenses",
+    icon: Receipt,
+    // Everyone files their own claims; managers/HR get Approvals + Categories, HR gets Payouts
+    // (tabs inside the page; the backend enforces the same roles).
+    pages: [{ label: "Expense Claims", path: "/expenses" }],
   },
   {
     key: "regularization",
