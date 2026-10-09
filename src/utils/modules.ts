@@ -11,6 +11,7 @@ import {
   Wallet,
   Clock,
   Receipt,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 
@@ -113,6 +114,14 @@ export const MODULES: Module[] = [
     // Everyone files their own claims; managers/HR get Approvals + Categories, HR gets Payouts
     // (tabs inside the page; the backend enforces the same roles).
     pages: [{ label: "Expense Claims", path: "/expenses" }],
+  },
+  {
+    key: "performance",
+    label: "Performance",
+    icon: Target,
+    // Everyone tracks their own goals + self review; managers/HR get Team Reviews,
+    // HR gets Cycles (tabs inside the page; the backend enforces the same roles).
+    pages: [{ label: "Performance", path: "/performance" }],
   },
   {
     key: "regularization",

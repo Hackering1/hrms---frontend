@@ -41,6 +41,7 @@ import PayslipGeneratorPage from "../pages/payroll/PayslipGeneratorPage";
 import MyPayslipsPage from "../pages/self-service/MyPayslipsPage";
 import TimesheetsPage from "../pages/timesheets/TimesheetsPage";
 import ExpensesPage from "../pages/expenses/ExpensesPage";
+import PerformancePage from "../pages/performance/PerformancePage";
 import { useAuthStore } from "../store/authStore";
 
 /**
@@ -90,6 +91,7 @@ export default function AppRoutes() {
           <Route path="/leave" element={<LeaveManagementPage />} />
           <Route path="/timesheets" element={<TimesheetsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/performance" element={<PerformancePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           {/* #5: My Documents must be reachable by employees too. The page
               self-scopes an employee to their own documents internally. */}
