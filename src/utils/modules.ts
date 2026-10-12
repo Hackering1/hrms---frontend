@@ -236,6 +236,11 @@ export const MODULES: Module[] = [
       { label: "Manager Portal", path: "/manager", roles: HR },
       { label: "HR Operations", path: "/hr-operations", roles: HR },
       { label: "Tickets", path: "/tickets", roles: HR },
+      {
+        label: "Plan & Billing",
+        path: "/plans",
+        roles: ["SUPER_ADMIN", "HR_ADMIN"],
+      },
     ],
   },
 ];

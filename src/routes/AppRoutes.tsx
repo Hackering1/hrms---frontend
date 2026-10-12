@@ -42,6 +42,7 @@ import MyPayslipsPage from "../pages/self-service/MyPayslipsPage";
 import TimesheetsPage from "../pages/timesheets/TimesheetsPage";
 import ExpensesPage from "../pages/expenses/ExpensesPage";
 import PerformancePage from "../pages/performance/PerformancePage";
+import PlansPage from "../pages/plans/PlansPage";
 import { useAuthStore } from "../store/authStore";
 
 /**
@@ -179,6 +180,12 @@ export default function AppRoutes() {
               path="/payroll/statutory-settings"
               element={<StatutorySettingsPage />}
             />
+          </Route>
+
+          {/* ---- Plan & Billing — SUPER_ADMIN + HR_ADMIN only (matches backend
+              @PreAuthorize on PlanController, same tier as payroll admin). ---- */}
+          <Route element={<RoleRoute allow={["SUPER_ADMIN", "HR_ADMIN"]} />}>
+            <Route path="/plans" element={<PlansPage />} />
           </Route>
 
           {/* ---- Super Admin only — Invite Employee flow. Managers and
