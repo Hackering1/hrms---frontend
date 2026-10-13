@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings2,
   Wallet,
+  CreditCard,
   Clock,
   Receipt,
   Target,
@@ -236,6 +237,16 @@ export const MODULES: Module[] = [
       { label: "Manager Portal", path: "/manager", roles: HR },
       { label: "HR Operations", path: "/hr-operations", roles: HR },
       { label: "Tickets", path: "/tickets", roles: HR },
+    ],
+  },
+  {
+    // Its own sidebar module (it used to be a sub-page under Admin, which is why it was
+    // hard to find). SUPER_ADMIN + HR_ADMIN only — matches PlanController @PreAuthorize.
+    key: "plans",
+    label: "Plans",
+    icon: CreditCard,
+    roles: ["SUPER_ADMIN", "HR_ADMIN"],
+    pages: [
       {
         label: "Plan & Billing",
         path: "/plans",
