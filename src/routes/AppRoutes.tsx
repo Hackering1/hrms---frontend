@@ -1,45 +1,43 @@
-import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
 import MainLayout from "../layouts/MainLayout";
+import LoginPage from "../pages/LoginPage";
+import DashboardPage from "../pages/DashboardPage";
+import EmployeesPage from "../pages/employee/EmployeesPage";
+import AttendancePage from "../pages/attendance/AttendancePage";
+import DocumentCategoriesPage from "../pages/documents/DocumentCategoriesPage";
+import EmployeeDocumentsPage from "../pages/documents/EmployeeDocumentsPage";
+import LeaveTypesPage from "../pages/leave/LeaveTypesPage";
+import LeaveManagementPage from "../pages/leave/LeaveManagementPage";
+import HrOperationsPage from "../pages/hrops/HrOperationsPage";
+import LetterTemplatesPage from "../pages/letters/LetterTemplatesPage";
+import GeneratedLettersPage from "../pages/letters/GeneratedLettersPage";
+import FormattedLetterPage from "../pages/letters/FormattedLetterPage";
+import NotificationsPage from "../pages/notifications/NotificationsPage";
+import MyProfilePage from "../pages/self-service/MyProfilePage";
+import ManagerPortalPage from "../pages/manager/ManagerPortalPage";
+import RegularizationPage from "../pages/regularization/RegularizationPage";
+import ReportsPage from "../pages/reports/ReportsPage";
+import BranchesPage from "../pages/organization/BranchesPage";
+import DepartmentsPage from "../pages/organization/DepartmentsPage";
+import DesignationsPage from "../pages/organization/DesignationsPage";
+import ShiftsPage from "../pages/organization/ShiftsPage";
+import HolidaysPage from "../pages/organization/HolidaysPage";
+import CompanyCalendarPage from "../pages/organization/CompanyCalendarPage";
+import SettingsPage from "../pages/settings/SettingsPage";
+import TicketsPage from "../pages/tickets/TicketsPage";
+import MyOrganizationPage from "../pages/self-org/MyOrganizationPage";
+import InviteEmployeePage from "../pages/employee/InviteEmployeePage";
+import InvitationsPage from "../pages/employee/InvitationsPage";
+import PendingProfilesPage from "../pages/employee/PendingProfilesPage";
+import EmployeeOnboardingPage from "../pages/onboarding/EmployeeOnboardingPage";
 import { useAuthStore } from "../store/authStore";
-
-const LoginPage = lazy(() => import("../pages/LoginPage"));
-const DashboardPage = lazy(() => import("../pages/DashboardPage"));
-const EmployeesPage = lazy(() => import("../pages/employee/EmployeesPage"));
-const AttendancePage = lazy(() => import("../pages/attendance/AttendancePage"));
-const DocumentCategoriesPage = lazy(() => import("../pages/documents/DocumentCategoriesPage"));
-const EmployeeDocumentsPage = lazy(() => import("../pages/documents/EmployeeDocumentsPage"));
-const LeaveTypesPage = lazy(() => import("../pages/leave/LeaveTypesPage"));
-const LeaveManagementPage = lazy(() => import("../pages/leave/LeaveManagementPage"));
-const HrOperationsPage = lazy(() => import("../pages/hrops/HrOperationsPage"));
-const LetterTemplatesPage = lazy(() => import("../pages/letters/LetterTemplatesPage"));
-const GeneratedLettersPage = lazy(() => import("../pages/letters/GeneratedLettersPage"));
-const FormattedLetterPage = lazy(() => import("../pages/letters/FormattedLetterPage"));
-const NotificationsPage = lazy(() => import("../pages/notifications/NotificationsPage"));
-const MyProfilePage = lazy(() => import("../pages/self-service/MyProfilePage"));
-const ManagerPortalPage = lazy(() => import("../pages/manager/ManagerPortalPage"));
-const RegularizationPage = lazy(() => import("../pages/regularization/RegularizationPage"));
-const ReportsPage = lazy(() => import("../pages/reports/ReportsPage"));
-const BranchesPage = lazy(() => import("../pages/organization/BranchesPage"));
-const DepartmentsPage = lazy(() => import("../pages/organization/DepartmentsPage"));
-const DesignationsPage = lazy(() => import("../pages/organization/DesignationsPage"));
-const ShiftsPage = lazy(() => import("../pages/organization/ShiftsPage"));
-const HolidaysPage = lazy(() => import("../pages/organization/HolidaysPage"));
-const CompanyCalendarPage = lazy(() => import("../pages/organization/CompanyCalendarPage"));
-const SettingsPage = lazy(() => import("../pages/settings/SettingsPage"));
-const TicketsPage = lazy(() => import("../pages/tickets/TicketsPage"));
-const MyOrganizationPage = lazy(() => import("../pages/self-org/MyOrganizationPage"));
-const InviteEmployeePage = lazy(() => import("../pages/employee/InviteEmployeePage"));
-const InvitationsPage = lazy(() => import("../pages/employee/InvitationsPage"));
-const PendingProfilesPage = lazy(() => import("../pages/employee/PendingProfilesPage"));
-const EmployeeOnboardingPage = lazy(() => import("../pages/onboarding/EmployeeOnboardingPage"));
-const SuiteWorkspacePage = lazy(() => import("../pages/suite/SuiteWorkspacePage"));
-const HRInsightsPage = lazy(() => import("../pages/suite/HRInsightsPage"));
-const PayrollPage = lazy(() => import("../pages/suite/PayrollPage"));
-const TimeTrackerPage = lazy(() => import("../pages/suite/TimeTrackerPage"));
-const PayslipsPage = lazy(() => import("../pages/suite/PayslipsPage"));
+import SuiteWorkspacePage from "../pages/suite/SuiteWorkspacePage";
+import HRInsightsPage from "../pages/suite/HRInsightsPage";
+import PayrollPage from "../pages/suite/PayrollPage";
+import TimeTrackerPage from "../pages/suite/TimeTrackerPage";
+import PayslipsPage from "../pages/suite/PayslipsPage";
 
 /**
  * Role groups — kept in lock-step with utils/modules.ts (the sidebar), so a
@@ -57,7 +55,6 @@ export default function AppRoutes() {
   const mustChangePassword = useAuthStore((s) => s.mustChangePassword);
 
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-slate-500" role="status">Loading page…</div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
@@ -183,6 +180,5 @@ export default function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
-    </Suspense>
   );
 }

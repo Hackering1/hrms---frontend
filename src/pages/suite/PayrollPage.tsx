@@ -19,15 +19,11 @@ const errorMessage = (error: unknown, fallback: string) => {
 };
 const defaults: Omit<Profile, "employeeId"> = { gross: 0, basic: 0, hra: 0, lta: 0, pfRate: 12, esiRate: 0, professionalTax: 0, tds: 0, employerPfRate: 12, employerEsiRate: 0, gratuity: 0, policyVersion: "" };
 const DAYS_FIELDS = [{ name: "gross", label: "Gross monthly earnings (₹)" }, { name: "basic", label: "Basic (₹)" }, { name: "hra", label: "House rent allowance (₹)" }, { name: "lta", label: "Leave travel allowance (₹)" }, { name: "pfRate", label: "Employee PF rate (%)" }, { name: "esiRate", label: "Employee ESI rate (%)" }, { name: "professionalTax", label: "Professional tax (₹)" }, { name: "tds", label: "TDS (₹)" }, { name: "employerPfRate", label: "Employer PF rate (%)" }, { name: "employerEsiRate", label: "Employer ESI rate (%)" }, { name: "gratuity", label: "Gratuity provision (₹)" }] as const;
-const currentPayrollPeriod = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-};
 
 export default function PayrollPage() {
   const [profileForm] = Form.useForm<Profile>();
   const [selectedEmployee, setSelectedEmployee] = useState<string>();
-  const [period, setPeriod] = useState(currentPayrollPeriod);
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7));
   const [runEmployees, setRunEmployees] = useState<RunEmployee[]>([]);
   const qc = useQueryClient();
   const profiles = useQuery({ queryKey: ["suite-payroll-profiles"], queryFn: () => resourceService.get<Profile[]>("/hr-suite/payroll/profiles") });
