@@ -694,30 +694,6 @@ export default function EmployeesPage() {
       },
     },
     {
-      title: "Aadhar",
-      dataIndex: "aadhaarNumber",
-      key: "aadhaarNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "PAN",
-      dataIndex: "panNumber",
-      key: "panNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "Account No",
-      dataIndex: "bankAccountNumber",
-      key: "bankAccountNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "IFSC",
-      dataIndex: "ifscCode",
-      key: "ifscCode",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
       title: "Address",
       key: "address",
       render: (_: any, row: any) => formatAddress(row),

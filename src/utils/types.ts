@@ -171,4 +171,14 @@ export interface ResourceConfig {
   queryKey: string; // e.g. "branches"
   columns: ColumnConfig[];
   fields: FieldConfig[];
+  /** Limit editing to HR even when the current route is visible to managers. */
+  adminOnly?: boolean;
+  /** Allow HR and Finance roles for payroll and statutory records. */
+  payrollAdminOnly?: boolean;
+  /** Permit employees to manage their own time/task records. */
+  allowSelfService?: boolean;
+  /** Keep the append-only audit trail while allowing corrections via status. */
+  disableDelete?: boolean;
+  readOnly?: boolean;
+  selfServiceOnly?: boolean;
 }

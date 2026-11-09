@@ -53,8 +53,12 @@ export default function ResourcePage({ config }: { config: ResourceConfig }) {
     config.endpoint,
     config.queryKey,
   );
-  const { canManage } = useRole();
-  const allowManage = canManage;
+  const { canManage, isHr, isEmployee, isManager, isPayrollAdmin } = useRole();
+  const allowManage = !config.readOnly && (config.selfServiceOnly
+    ? isEmployee || (isManager && !isHr)
+    : config.payrollAdminOnly ? isPayrollAdmin
+      : config.adminOnly ? isHr
+      : canManage || (config.allowSelfService === true && isEmployee));
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ResourceRecord | null>(null);
@@ -190,7 +194,7 @@ export default function ResourcePage({ config }: { config: ResourceConfig }) {
               icon={<EditOutlined />}
               onClick={() => openEdit(row)}
             />
-            <Popconfirm
+            {!config.disableDelete && <Popconfirm
               title={`Delete this ${singular.toLowerCase()}?`}
               description="This action can't be undone."
               okText="Delete"
@@ -198,7 +202,7 @@ export default function ResourcePage({ config }: { config: ResourceConfig }) {
               onConfirm={() => handleDelete(row.id!)}
             >
               <AntButton size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            </Popconfirm>}
           </span>
         ) : (
           <Text type="secondary">—</Text>
