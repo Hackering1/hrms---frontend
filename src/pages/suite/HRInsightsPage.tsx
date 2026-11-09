@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQueries } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { resourceService } from "../../services/resourceService";
 
@@ -14,11 +15,12 @@ export default function HRInsightsPage() {
   const records = Object.fromEntries(feeds.map((module, index) => [module, queries[index].data ?? []])) as Record<(typeof feeds)[number], RecordItem[]>;
   const busy = queries.some((query) => query.isLoading);
   const failed = queries.some((query) => query.isError);
+  const today = dayjs().format("YYYY-MM-DD");
   const signals = [
     { title: "Payroll review", detail: `${records.payroll.filter((r) => !["PAID", "APPROVED"].includes(r.status)).length} payroll records need review.`, href: "/payroll", action: "Open payroll" },
-    { title: "Overdue tasks", detail: `${records.tasks.filter((r) => r.startDate && r.startDate < new Date().toISOString().slice(0, 10) && !["DONE", "CANCELLED"].includes(r.status)).length} tasks are past their due date.`, href: "/tasks", action: "Review tasks" },
+    { title: "Overdue tasks", detail: `${records.tasks.filter((r) => r.startDate && r.startDate < today && !["DONE", "CANCELLED"].includes(r.status)).length} tasks are past their due date.`, href: "/tasks", action: "Review tasks" },
     { title: "Timesheet approvals", detail: `${records.timesheets.filter((r) => !["APPROVED", "PAID"].includes(r.status)).length} timesheets are not approved.`, href: "/timesheets", action: "Review timesheets" },
-    { title: "Asset return dates", detail: `${records.assets.filter((r) => r.endDate && r.endDate < new Date().toISOString().slice(0, 10) && !["RETURNED", "CANCELLED"].includes(r.status)).length} assets have passed their planned return date.`, href: "/assets", action: "Open assets" },
+    { title: "Asset return dates", detail: `${records.assets.filter((r) => r.endDate && r.endDate < today && !["RETURNED", "CANCELLED"].includes(r.status)).length} assets have passed their planned return date.`, href: "/assets", action: "Open assets" },
     { title: "Performance reviews", detail: `${records.performance.filter((r) => !["DONE", "APPROVED"].includes(r.status)).length} review records remain open.`, href: "/performance", action: "Open reviews" },
   ];
 
