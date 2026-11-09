@@ -38,14 +38,6 @@ const theme = {
   },
 };
 
-const ASSIGNABLE_ROLES = [
-  { value: "EMPLOYEE", label: "Employee" },
-  { value: "MANAGER", label: "Manager" },
-  { value: "FINANCE_ADMIN", label: "Finance Admin" },
-  { value: "HR_EXECUTIVE", label: "HR Executive" },
-  { value: "HR_ADMIN", label: "HR Admin" },
-];
-
 interface PortalUser {
   id: string;
   email: string;
@@ -389,15 +381,6 @@ function UsersTab({ mode }: { mode: "active" | "deleted" }) {
     onError: (e: any) => toast.error(e?.response?.data?.message ?? "Failed"),
   });
 
-  const changeRole = useMutation({
-    mutationFn: ({ id, roleName }: { id: string; roleName: string }) => userApi.changeRole(id, roleName),
-    onSuccess: async () => {
-      toast.success("User role updated");
-      await qc.invalidateQueries({ queryKey: ["activeUsers"] });
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? "Could not update role"),
-  });
-
   if (list.isLoading) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -412,13 +395,7 @@ function UsersTab({ mode }: { mode: "active" | "deleted" }) {
     {
       title: "Role",
       key: "role",
-      render: (_: unknown, u: PortalUser) => mode === "active" && !u.roles.includes("SUPER_ADMIN") ? <AntSelect
-        style={{ minWidth: 150 }}
-        value={u.roles[0] ?? "EMPLOYEE"}
-        options={ASSIGNABLE_ROLES}
-        loading={changeRole.isPending && changeRole.variables?.id === u.id}
-        onChange={(roleName) => changeRole.mutate({ id: u.id, roleName })}
-      /> : <Tag color={u.roles.includes("SUPER_ADMIN") ? "cyan" : "default"}>{u.roles.join(", ") || "—"}</Tag>,
+      render: (_: any, u: any) => <Tag>{u.roles.join(", ") || "\u2014"}</Tag>,
     },
     {
       title: "Last Login",
