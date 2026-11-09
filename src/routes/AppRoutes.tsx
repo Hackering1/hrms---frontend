@@ -33,6 +33,11 @@ import InvitationsPage from "../pages/employee/InvitationsPage";
 import PendingProfilesPage from "../pages/employee/PendingProfilesPage";
 import EmployeeOnboardingPage from "../pages/onboarding/EmployeeOnboardingPage";
 import { useAuthStore } from "../store/authStore";
+import SuiteWorkspacePage from "../pages/suite/SuiteWorkspacePage";
+import HRInsightsPage from "../pages/suite/HRInsightsPage";
+import PayrollPage from "../pages/suite/PayrollPage";
+import TimeTrackerPage from "../pages/suite/TimeTrackerPage";
+import PayslipsPage from "../pages/suite/PayslipsPage";
 
 /**
  * Role groups — kept in lock-step with utils/modules.ts (the sidebar), so a
@@ -41,6 +46,7 @@ import { useAuthStore } from "../store/authStore";
  * kept for forward-compat and simply match nobody until those logins exist.
  */
 const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"]; // effectively Super Admin today
+const PAYROLL_ADMIN = [...HR, "FINANCE_ADMIN"];
 const MANAGER_PLUS = [...HR, "MANAGER"];
 const EMPLOYEE_ONLY = ["EMPLOYEE"];
 const SUPER_ADMIN_ONLY = ["SUPER_ADMIN"];
@@ -80,6 +86,12 @@ export default function AppRoutes() {
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/leave" element={<LeaveManagementPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/time-tracking" element={<TimeTrackerPage />} />
+          <Route path="/tasks" element={<SuiteWorkspacePage module="tasks" />} />
+          <Route path="/timesheets" element={<SuiteWorkspacePage module="timesheets" />} />
+          <Route path="/performance" element={<SuiteWorkspacePage module="performance" />} />
+          <Route path="/assets" element={<SuiteWorkspacePage module="assets" />} />
+          <Route path="/monitoring" element={<SuiteWorkspacePage module="monitoring" />} />
           {/* #5: My Documents must be reachable by employees too. The page
               self-scopes an employee to their own documents internally. */}
           <Route
@@ -103,7 +115,6 @@ export default function AppRoutes() {
             <Route path="/manager" element={<ManagerPortalPage />} />
             <Route path="/regularization" element={<RegularizationPage />} />
             <Route path="/leave/types" element={<LeaveTypesPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
             <Route
               path="/documents/categories"
               element={<DocumentCategoriesPage />}
@@ -135,7 +146,15 @@ export default function AppRoutes() {
           </Route>
 
           {/* ---- HR / Super Admin only ---- */}
+          <Route element={<RoleRoute allow={PAYROLL_ADMIN} />}>
+            <Route path="/payroll" element={<PayrollPage />} />
+            <Route path="/payslips" element={<PayslipsPage />} />
+            <Route path="/statutory" element={<SuiteWorkspacePage module="statutory" />} />
+          </Route>
+
+          {/* ---- HR / Super Admin only ---- */}
           <Route element={<RoleRoute allow={HR} />}>
+            <Route path="/hr-insights" element={<HRInsightsPage />} />
             <Route path="/tickets" element={<TicketsPage />} />
           </Route>
 

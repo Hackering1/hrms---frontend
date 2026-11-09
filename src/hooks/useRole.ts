@@ -10,6 +10,7 @@ export function useRole() {
   const isSuperAdmin = has("ROLE_SUPER_ADMIN", "SUPER_ADMIN");
   const isHrAdmin = has("ROLE_HR_ADMIN", "HR_ADMIN");
   const isHrExec = has("ROLE_HR_EXECUTIVE", "HR_EXECUTIVE");
+  const isFinance = has("ROLE_FINANCE_ADMIN", "FINANCE_ADMIN");
   const isManager = has("ROLE_MANAGER", "MANAGER");
   const isEmployee = has("ROLE_EMPLOYEE", "EMPLOYEE");
 
@@ -25,9 +26,11 @@ export function useRole() {
     isManager,
     isEmployee,
     isHr,
+    isFinance,
+    isPayrollAdmin: isHr || isFinance,
     // Master data (branches, departments, designations, shifts, leave types,
     // employees): Super Admin + Manager (matches backend @PreAuthorize).
-    canManage: isSuperAdmin || isManager,
+    canManage: isHr || isManager,
     // Leave approval is MANAGER-ONLY (matches backend on
     // PUT /api/leave-requests/{id}/decision).
     canApprove: isManager,
