@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 13610)
+Total output lines: 1628
+
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -657,6 +660,32 @@ export default function EmployeesPage() {
       key: "designationName",
       render: (v: string) => v ?? "\u2014",
     },
+    ...(isHr ? [
+      {
+        title: "Aadhaar",
+        dataIndex: "aadhaarNumber",
+        key: "aadhaarNumber",
+        render: (v: string) => v ?? "\u2014",
+      },
+      {
+        title: "PAN",
+        dataIndex: "panNumber",
+        key: "panNumber",
+        render: (v: string) => v ?? "\u2014",
+      },
+      {
+        title: "Account No",
+        dataIndex: "bankAccountNumber",
+        key: "bankAccountNumber",
+        render: (v: string) => v ?? "\u2014",
+      },
+      {
+        title: "IFSC",
+        dataIndex: "ifscCode",
+        key: "ifscCode",
+        render: (v: string) => v ?? "\u2014",
+      },
+    ] : []),
     {
       title: "Reporting Manager",
       key: "reportingManager",
@@ -718,203 +747,7 @@ export default function EmployeesPage() {
               title="Delete this employee?"
               description="This also removes their education and experience records."
               okText="Delete"
-              okButtonProps={{ danger: true }}
-              onConfirm={() => del.mutate(String(row.id))}
-            >
-              <AntButton size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
-          </Space>
-        ) : (
-          <Text type="secondary">{"\u2014"}</Text>
-        ),
-    },
-  ];
-
-  return (
-    <ConfigProvider theme={theme}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <div>
-            <Title level={2} style={{ margin: 0 }}>
-              Employees
-            </Title>
-            {!list.isLoading && (
-              <Text type="secondary">
-                {rows.length} {rows.length === 1 ? "record" : "records"}
-              </Text>
-            )}
-          </div>
-          <Space>
-            {canManage && (
-              <AntButton
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreate}
-              >
-                Add Employee
-              </AntButton>
-            )}
-            {(isSuperAdmin || isFinance) && (
-              <AntButton onClick={() => navigate("/employees/invite")}>
-                Invite Employee
-              </AntButton>
-            )}
-          </Space>
-        </div>
-
-        {!list.isLoading && rows.length > 0 && (
-          <AntInput
-            allowClear
-            style={{ maxWidth: 320 }}
-            prefix={<SearchOutlined style={{ color: "#94a3b8" }} />}
-            placeholder="Search employees…"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-          />
-        )}
-
-        <Table
-          loading={list.isLoading}
-          rowKey={(r: any) => r.id}
-          columns={columns}
-          dataSource={filtered as any[]}
-          scroll={{ x: "max-content" }}
-          locale={{
-            emptyText: (
-              <Empty description="No employees yet">
-                {canManage && (
-                  <AntButton
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={openCreate}
-                  >
-                    Add Employee
-                  </AntButton>
-                )}
-              </Empty>
-            ),
-          }}
-          pagination={{
-            current: page,
-            pageSize: PAGE_SIZE,
-            total: filtered.length,
-            onChange: (p) => setPage(p),
-            showTotal: (total) => total + " total",
-          }}
-        />
-
-        <AntModal
-          open={open}
-          title={(editingId ? "Edit" : "Add") + " Employee"}
-          onCancel={() => setOpen(false)}
-          width={800}
-          footer={[
-            <AntButton key="cancel" onClick={() => setOpen(false)}>
-              Cancel
-            </AntButton>,
-            <AntButton
-              key="submit"
-              type="primary"
-              loading={save.isPending}
-              onClick={submit}
-            >
-              {editingId ? "Update" : "Create"}
-            </AntButton>,
-          ]}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-              maxHeight: "70vh",
-              overflowY: "auto",
-              paddingRight: 4,
-            }}
-          >
-            {/* Personal */}
-            <Section title="Personal">
-              <Grid>
-                <Field label="Employee Code *">
-                  <AntInput
-                    value={form.employeeCode ?? ""}
-                    onChange={(e) => set("employeeCode", e.target.value)}
-                    disabled={Boolean(editingId) && !isHr}
-                    title={
-                      Boolean(editingId) && !isHr
-                        ? "Only a Super Admin / HR can change an existing Employee ID"
-                        : undefined
-                    }
-                  />
-                </Field>
-                <Field label="First Name *">
-                  <AntInput
-                    value={form.firstName ?? ""}
-                    onChange={(e) => set("firstName", e.target.value)}
-                  />
-                </Field>
-                <Field label="Last Name *">
-                  <AntInput
-                    value={form.lastName ?? ""}
-                    onChange={(e) => set("lastName", e.target.value)}
-                  />
-                </Field>
-                <Field label="Middle Name">
-                  <AntInput
-                    value={form.middleName ?? ""}
-                    onChange={(e) => set("middleName", e.target.value)}
-                  />
-                </Field>
-                <Field label="Date of Birth *">
-                  <DatePicker
-                    format="DD/MM/YYYY"
-                    style={{ width: "100%" }}
-                    value={
-                      form.dateOfBirth
-                        ? dayjs(form.dateOfBirth as string)
-                        : null
-                    }
-                    onChange={(d) =>
-                      set("dateOfBirth", d ? d.format("YYYY-MM-DD") : "")
-                    }
-                  />
-                </Field>
-                <Field label="Gender *">
-                  <AntSelect
-                    style={{ width: "100%" }}
-                    value={form.gender || undefined}
-                    onChange={(v) => set("gender", v)}
-                    allowClear
-                    options={[
-                      { value: "MALE", label: "Male" },
-                      { value: "FEMALE", label: "Female" },
-                      { value: "OTHER", label: "Other" },
-                    ]}
-                  />
-                </Field>
-                <Field label="Blood Group *">
-                  <AntInput
-                    value={form.bloodGroup ?? ""}
-                    onChange={(e) => set("bloodGroup", e.target.value)}
-                  />
-                </Field>
-                <Field label="Marital Status *">
-                  <AntSelect
-                    style={{ width: "100%" }}
-                    value={form.maritalStatus || undefined}
-                    onChange={(v) => set("maritalStatus", v)}
-                    allowClear
+              okBut…1610 tokens truncated…
                     options={MARITAL_OPTIONS}
                   />
                 </Field>
