@@ -26,11 +26,11 @@ import {
 } from "lucide-react";
 
 // Role groups
-export const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"];
+export const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE", "FINANCE_ADMIN"];
 export const MANAGER_PLUS = [...HR, "MANAGER"]; // manager + all HR
 export const ALL = undefined; // everyone signed in
 export const EMPLOYEE_ONLY = ["EMPLOYEE"]; // employees only (hidden from managers/admins)
-export const SUPER_ADMIN_ONLY = ["SUPER_ADMIN"]; // super admin only
+export const ADMIN_ONLY = ["SUPER_ADMIN", "FINANCE_ADMIN"]; // organization admin only
 
 export interface NavItem {
   label: string;
@@ -160,19 +160,19 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Invite Employee",
     path: "/employees/invite",
     icon: UserPlus,
-    roles: SUPER_ADMIN_ONLY,
+    roles: ADMIN_ONLY,
   },
   {
     label: "Invitations",
     path: "/employees/invitations",
     icon: MailCheck,
-    roles: SUPER_ADMIN_ONLY,
+    roles: ADMIN_ONLY,
   },
   {
     label: "Pending Profiles",
     path: "/employees/pending",
     icon: Hourglass,
-    roles: SUPER_ADMIN_ONLY,
+    roles: ADMIN_ONLY,
   },
 
   // Everyone (admins also get Users management inside)
@@ -182,7 +182,11 @@ export const NAV_ITEMS: NavItem[] = [
 
 // Filter nav items by the user's roles
 export function visibleNavItems(userRoles: string[]): NavItem[] {
+  const normalizedRoles = userRoles.map((role) => role.replace(/^ROLE_/, ""));
+  if (normalizedRoles.includes("SUPER_ADMIN")) return NAV_ITEMS;
   return NAV_ITEMS.filter(
-    (item) => !item.roles || item.roles.some((r) => userRoles.includes(r)),
+    (item) => !item.roles || item.roles.some((role) =>
+      normalizedRoles.includes(role),
+    ),
   );
 }

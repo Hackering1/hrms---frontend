@@ -27,7 +27,6 @@ import dayjs from "dayjs";
 import { resourceService } from "../../services/resourceService";
 import { documentService } from "../../services/documentService";
 import FileUpload from "../../components/ui/FileUpload";
-import { useAuthStore } from "../../store/authStore";
 import { useRole } from "../../hooks/useRole";
 import { selfService } from "../../services/selfService";
 import { managerService } from "../../services/managerService";
@@ -138,12 +137,8 @@ function formatAddress(row: any): string {
 export default function EmployeesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const roles = useAuthStore((s) => s.roles) ?? [];
-  const canManage = roles.some((r) =>
-    ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"].includes(r),
-  );
   // A manager (not super admin / HR) sees ONLY their own team here.
-  const { isManager, isSuperAdmin, isHr } = useRole();
+  const { isManager, isSuperAdmin, isHr, isFinance, canManage } = useRole();
   const managerScoped = isManager && !isSuperAdmin && !isHr;
   const me = useQuery({
     queryKey: ["me"],
@@ -179,7 +174,9 @@ export default function EmployeesPage() {
     const em = String(row.email ?? "").toLowerCase();
     return rolesByEmail.get(em) ?? [];
   };
-  const isManagerRow = (row: any) => rowRoles(row).includes("MANAGER");
+  const isManagerRow = (row: any) => rowRoles(row).some((role) =>
+    ["MANAGER", "HR_ADMIN", "HR_EXECUTIVE", "FINANCE_ADMIN"].includes(role.replace(/^ROLE_/, "")),
+  );
   const isSuperAdminRow = (row: any) => rowRoles(row).includes("SUPER_ADMIN");
 
   const [open, setOpen] = useState(false);
@@ -694,30 +691,6 @@ export default function EmployeesPage() {
       },
     },
     {
-      title: "Aadhar",
-      dataIndex: "aadhaarNumber",
-      key: "aadhaarNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "PAN",
-      dataIndex: "panNumber",
-      key: "panNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "Account No",
-      dataIndex: "bankAccountNumber",
-      key: "bankAccountNumber",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
-      title: "IFSC",
-      dataIndex: "ifscCode",
-      key: "ifscCode",
-      render: (v: string) => v ?? "\u2014",
-    },
-    {
       title: "Address",
       key: "address",
       render: (_: any, row: any) => formatAddress(row),
@@ -789,7 +762,7 @@ export default function EmployeesPage() {
                 Add Employee
               </AntButton>
             )}
-            {roles.includes("SUPER_ADMIN") && (
+            {(isSuperAdmin || isFinance) && (
               <AntButton onClick={() => navigate("/employees/invite")}>
                 Invite Employee
               </AntButton>
@@ -1076,7 +1049,7 @@ export default function EmployeesPage() {
                       // Lets a Super Admin attach a profile to an account that
                       // already has a login (e.g. the original seeded Super
                       // Admin) instead of creating a brand-new duplicate one.
-                      ...(roles.includes("SUPER_ADMIN")
+                      ...((isSuperAdmin || isFinance)
                         ? [{ value: "EXISTING", label: "Link Existing Login" }]
                         : []),
                     ]}
