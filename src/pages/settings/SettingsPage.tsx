@@ -163,7 +163,7 @@ function AccountTab({ canAdminUsers }: { canAdminUsers: boolean }) {
     enabled: canAdminUsers,
   });
   const [targetEmail, setTargetEmail] = useState("");
-  const [resetPwd, setResetPwd] = useState("User@0412");
+  const [resetPwd, setResetPwd] = useState("");
 
   // SA #9: create another Super Admin (super-admin only).
   const qc = useQueryClient();
@@ -187,7 +187,7 @@ function AccountTab({ canAdminUsers }: { canAdminUsers: boolean }) {
     onSuccess: () => {
       toast.success("Password reset for " + targetEmail);
       setTargetEmail("");
-      setResetPwd("User@0412");
+      setResetPwd("");
     },
     onError: (e: any) =>
       toast.error(e?.response?.data?.message ?? "Reset failed"),
