@@ -7,7 +7,7 @@ import { apiClient } from "../../services/apiClient";
 import { resourceService } from "../../services/resourceService";
 import type { ApiResponse } from "../../utils/types";
 
-type TimeRecord = { id: string; title: string; status: string; startDate?: string; endDate?: string; minutes?: number; createdAt?: string };
+type TimeRecord = { id: string; title: string; category?: string; status: string; startDate?: string; endDate?: string; minutes?: number; createdAt?: string };
 const errorMessage = (error: unknown, fallback: string) => {
   if (typeof error !== "object" || error === null || !("response" in error)) return fallback;
   const response = (error as { response?: { data?: { message?: unknown } } }).response;
@@ -19,6 +19,7 @@ const localDateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMon
 
 export default function TimeTrackerPage() {
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("PROJECT_WORK");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
   const [now, setNow] = useState(0);
@@ -37,7 +38,7 @@ export default function TimeTrackerPage() {
   }, [activeId]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["suite-time-tracking"] });
   const start = useMutation({
-    mutationFn: async () => (await apiClient.post<ApiResponse<TimeRecord>>("/hr-suite/time-tracking/start", { title: title.trim() })).data.data,
+    mutationFn: async () => (await apiClient.post<ApiResponse<TimeRecord>>("/hr-suite/time-tracking/start", { title: title.trim(), category })).data.data,
     onSuccess: async () => { setTitle(""); toast.success("Timer started"); await refresh(); },
     onError: (error: unknown) => toast.error(errorMessage(error, "Could not start timer")),
   });
@@ -82,6 +83,7 @@ export default function TimeTrackerPage() {
         <Button danger size="large" icon={<Square size={15} />} loading={stop.isPending} onClick={() => stop.mutate(active.id)}>Stop & save time</Button>
       </div> : <div className="mt-4 flex max-w-2xl flex-wrap gap-2">
         <Input aria-label="Project or activity" value={title} maxLength={180} placeholder="Project or activity" onChange={(event) => setTitle(event.target.value)} onPressEnter={() => title.trim() && start.mutate()} />
+        <Select aria-label="Work category" className="min-w-44" value={category} onChange={setCategory} options={[{ value: "PROJECT_WORK", label: "Project work" }, { value: "MEETING", label: "Meeting" }, { value: "TRAINING", label: "Training" }, { value: "ADMIN", label: "Admin work" }]} />
         <Button type="primary" icon={<Play size={15} />} loading={start.isPending} disabled={!title.trim()} onClick={() => start.mutate()}>Start timer</Button>
       </div>}
       <p className="mt-3 text-xs text-slate-500">One timer can run at a time. Time is calculated by the server when you stop the session.</p>
@@ -91,6 +93,7 @@ export default function TimeTrackerPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold text-slate-900">Session history</h2><p className="mt-1 text-sm text-slate-500">Search and review your recorded work before submitting a timesheet.</p></div><div className="flex flex-wrap gap-2"><Input allowClear value={search} placeholder="Search activity" onChange={(event) => setSearch(event.target.value)} className="w-52" /><Select value={status} onChange={setStatus} className="w-36" options={[{ value: "ALL", label: "All statuses" }, { value: "RUNNING", label: "Running" }, { value: "STOPPED", label: "Completed" }]} /></div></div>
       <Table rowKey="id" loading={records.isLoading} dataSource={filtered} pagination={{ pageSize: 10 }} locale={{ emptyText: records.isError ? "Could not load sessions. Refresh and try again." : "No matching work sessions." }} columns={[
         { title: "Project / activity", dataIndex: "title", key: "title" },
+        { title: "Category", dataIndex: "category", key: "category", render: (value: string | undefined) => value?.replaceAll("_", " ") ?? "—" },
         { title: "Work date", dataIndex: "startDate", key: "startDate" },
         { title: "Duration", dataIndex: "minutes", key: "minutes", render: (value: number | undefined, row: TimeRecord) => row.status === "RUNNING" ? minsLabel(Math.max(0, Math.floor((now - startInstant(row)) / 60_000))) : value == null ? "—" : minsLabel(value) },
         { title: "Status", dataIndex: "status", key: "status", render: (value: string) => <Tag color={value === "RUNNING" ? "green" : "blue"}>{value === "STOPPED" ? "COMPLETED" : value}</Tag> },
