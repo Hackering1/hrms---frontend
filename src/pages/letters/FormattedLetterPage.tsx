@@ -411,7 +411,7 @@ export default function FormattedLetterPage() {
   // Keeps the field showing the previously-committed manual name (if any)
   // even when the dropdown is closed and nothing is currently being typed.
   const manualOption =
-    !employeeId && employeeNameInput
+    !isConfirmationLetter && !employeeId && employeeNameInput
       ? [
           {
             value: "__manual__",
@@ -727,7 +727,9 @@ export default function FormattedLetterPage() {
   // both "Generate & Download PDF" and the new "Send Email" action build the
   // exact same request body from one place (no duplicate logic).
   const letterTypeFileLabel = () =>
-    letterType === "APPOINTMENT"
+    letterType === "CONFIRMATION"
+      ? "Confirmation"
+      : letterType === "APPOINTMENT"
       ? "Appointment"
       : letterType === "RELIEVING"
         ? "Relieving"
@@ -1022,12 +1024,12 @@ export default function FormattedLetterPage() {
                       setManualEmail("");
                     }
                   }}
-                  placeholder="Select a saved/invited employee, or type a new candidate's name"
+                  placeholder={isConfirmationLetter ? "Select an employee" : "Select a saved/invited employee, or type a new candidate's name"}
                 />
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Pick from Saved Employees or Invited (Onboarding), or type a
-                  name and choose "Use ... (not in system)" for a candidate who
-                  isn't in the system yet.
+                  {isConfirmationLetter
+                    ? "Confirmation letters can only be issued to an employee already in the HR portal."
+                    : "Pick from Saved Employees or Invited (Onboarding), or type a name and choose Use not in system for a candidate."}
                 </Text>
               </Field>
             </Col>
@@ -1656,13 +1658,18 @@ export default function FormattedLetterPage() {
               letterhead without a salary annexure.
             </Text>
           )}
+          {isConfirmationLetter && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              The letter is emailed to the employee's saved email from hr@technnext.com.
+            </Text>
+          )}
           {!canGenerate && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               {isConfirmationLetter && !employeeId
                 ? "Select a saved employee to generate a confirmation letter."
                 : !candidateAddressOk
-                ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
-                : "Enter an employee name, designation, and CTC to enable."}
+                  ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
+                  : "Enter an employee name, designation, and CTC to enable."}
             </Text>
           )}
           {canGenerate && !isServiceLetter && !canSendEmail && (
