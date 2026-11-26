@@ -43,6 +43,17 @@ const theme = {
 };
 
 const PAGE_SIZE = 10;
+const INITIAL_PASSWORD_CHARS =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+
+function generateInitialPassword() {
+  const values = new Uint8Array(18);
+  window.crypto.getRandomValues(values);
+  return Array.from(
+    values,
+    (value) => INITIAL_PASSWORD_CHARS[value % INITIAL_PASSWORD_CHARS.length],
+  ).join("");
+}
 
 const MONTHS = [
   "Jan",
@@ -449,7 +460,7 @@ export default function EmployeesPage() {
       isFresher: true,
       status: "ACTIVE",
       employmentType: "FULL_TIME",
-      password: "",
+      password: generateInitialPassword(),
       employeeCode: defaults.employeeCode ?? suggestNextCode(),
       managerId: defaults.managerId,
       managerName: defaults.managerName,
@@ -518,6 +529,8 @@ export default function EmployeesPage() {
       if (!form.loginRole) missing.push("Create Login As");
       if (form.loginRole === "EXISTING") {
         if (!form.existingUserId) missing.push("Select Login to Link");
+      } else if (!form.password) {
+        missing.push("Login Password");
       }
       if (
         (form.loginRole === "EMPLOYEE" || form.loginRole === "MANAGER") &&
@@ -1109,11 +1122,10 @@ export default function EmployeesPage() {
                     />
                   </Field>
                 ) : (
-                  <Field label="Initial Password (optional)">
+                  <Field label="Login Password *">
                     <AntInput
                       value={form.password ?? ""}
                       onChange={(e) => set("password", e.target.value)}
-                      placeholder="Leave blank to generate a secure password"
                     />
                   </Field>
                 )}
