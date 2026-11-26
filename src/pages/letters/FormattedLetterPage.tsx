@@ -271,6 +271,7 @@ export default function FormattedLetterPage() {
     | "INTERNSHIP"
     | "INTERNSHIP_OFFER"
     | "C2H"
+    | "CONFIRMATION"
   >("OFFER");
 
   const isServiceLetter =
@@ -278,6 +279,8 @@ export default function FormattedLetterPage() {
     letterType === "EXPERIENCE" ||
     letterType === "INTERNSHIP";
   const isInternshipOffer = letterType === "INTERNSHIP_OFFER";
+  const isConfirmationLetter = letterType === "CONFIRMATION";
+  const isNonCompensationLetter = isServiceLetter || isConfirmationLetter;
   const [meta, setMeta] = useState<Record<string, string>>({
     letterDate: dayjs().format("YYYY-MM-DD"),
     place: "Bangalore",
@@ -366,7 +369,12 @@ export default function FormattedLetterPage() {
   );
   // The name that goes on the letter: whatever is typed/selected in the
   // field — whether that resolved to a saved/invited employee or not.
-  const employeeName = employeeNameInput.trim();
+  const employeeName =
+    isConfirmationLetter && selectedEmp
+      ? [selectedEmp.firstName, selectedEmp.middleName, selectedEmp.lastName]
+          .filter(Boolean)
+          .join(" ")
+      : employeeNameInput.trim();
 
   // Employee dropdown options, grouped into "Saved Employees" (ACTIVE,
   // already in the system) and "Invited (Onboarding)" (invite sent, still
@@ -397,12 +405,13 @@ export default function FormattedLetterPage() {
   );
   const trimmedSearch = employeeSearch.trim();
   const showAddNew =
+    !isConfirmationLetter &&
     trimmedSearch.length > 0 && !knownNames.has(trimmedSearch.toLowerCase());
 
   // Keeps the field showing the previously-committed manual name (if any)
   // even when the dropdown is closed and nothing is currently being typed.
   const manualOption =
-    !employeeId && employeeNameInput
+    !isConfirmationLetter && !employeeId && employeeNameInput
       ? [
           {
             value: "__manual__",
@@ -642,7 +651,7 @@ export default function FormattedLetterPage() {
   // that came back from auto-fill. Same "seed once, then freely editable"
   // justification as the CTC-in-Words effect above.
   useEffect(() => {
-    if (isServiceLetter) return;
+    if (isNonCompensationLetter) return;
     if (salary.insuranceM || salary.insuranceA) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSalary((s) => ({
@@ -651,7 +660,7 @@ export default function FormattedLetterPage() {
       insuranceA: inr(DEFAULT_GMI_MONTHLY * 12),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isServiceLetter]);
+  }, [isNonCompensationLetter]);
 
   // NEW — Part 8/10, fully live now: editing CTC, Basic, LTA, GMI, or
   // Variable Pay recalculates every dependent total automatically, by
@@ -718,7 +727,9 @@ export default function FormattedLetterPage() {
   // both "Generate & Download PDF" and the new "Send Email" action build the
   // exact same request body from one place (no duplicate logic).
   const letterTypeFileLabel = () =>
-    letterType === "APPOINTMENT"
+    letterType === "CONFIRMATION"
+      ? "Confirmation"
+      : letterType === "APPOINTMENT"
       ? "Appointment"
       : letterType === "RELIEVING"
         ? "Relieving"
@@ -830,8 +841,10 @@ export default function FormattedLetterPage() {
 
   const canGenerate = isInternshipOffer
     ? internshipOfferValid
-    : isServiceLetter
-      ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
+    : isConfirmationLetter
+      ? !!employeeId && !!employeeName && !!meta.designation && !!meta.dateOfJoining
+      : isServiceLetter
+        ? !!employeeName && !!meta.designation && !!meta.employmentEndDate
       : !!employeeName &&
         !!meta.designation &&
         !!meta.ctcAnnual &&
@@ -1011,12 +1024,12 @@ export default function FormattedLetterPage() {
                       setManualEmail("");
                     }
                   }}
-                  placeholder="Select a saved/invited employee, or type a new candidate's name"
+                  placeholder={isConfirmationLetter ? "Select an employee" : "Select a saved/invited employee, or type a new candidate's name"}
                 />
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Pick from Saved Employees or Invited (Onboarding), or type a
-                  name and choose "Use ... (not in system)" for a candidate who
-                  isn't in the system yet.
+                  {isConfirmationLetter
+                    ? "Confirmation letters can only be issued to an employee already in the HR portal."
+                    : "Pick from Saved Employees or Invited (Onboarding), or type a name and choose Use not in system for a candidate."}
                 </Text>
               </Field>
             </Col>
@@ -1025,7 +1038,7 @@ export default function FormattedLetterPage() {
                 employee, the address continues to come from that
                 employee's own record exactly as before — this field is
                 simply hidden and never sent. */}
-            {!isServiceLetter && !employeeId && (
+            {!isServiceLetter && !isConfirmationLetter && !employeeId && (
               <Col xs={24}>
                 <Field label="Candidate Address">
                   <AntInput.TextArea
@@ -1049,7 +1062,7 @@ export default function FormattedLetterPage() {
                 file (fix a wrong one via Employee Management, not here).
                 Not-in-portal candidate: HR types it directly, used only for
                 this send — never persisted to any employee record. */}
-            {!isServiceLetter && (
+            {!isServiceLetter && (!isConfirmationLetter || employeeId) && (
               <Col xs={24} sm={12}>
                 <Field label="Email">
                   {employeeId ? (
@@ -1086,6 +1099,7 @@ export default function FormattedLetterPage() {
                   options={[
                     { value: "OFFER", label: "Offer Letter" },
                     { value: "APPOINTMENT", label: "Appointment Letter" },
+                    { value: "CONFIRMATION", label: "Confirmation Letter" },
                     {
                       value: "C2H",
                       label: "Contract-to-Hire Offer Letter",
@@ -1168,7 +1182,7 @@ export default function FormattedLetterPage() {
                 />
               </Field>
             </Col>
-            {!isServiceLetter && letterType !== "C2H" && (
+            {!isNonCompensationLetter && letterType !== "C2H" && (
               <Col xs={24} sm={12}>
                 <Field label="Employment Type">
                   <AntSelect
@@ -1184,7 +1198,7 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter &&
+            {!isNonCompensationLetter &&
               (meta.employmentType === "CONTRACT" || letterType === "C2H") && (
                 <Col xs={24} sm={12}>
                   <Field label="Contract Duration">
@@ -1217,9 +1231,11 @@ export default function FormattedLetterPage() {
             <Col xs={24} sm={12}>
               <Field
                 label={
-                  isInternshipOffer
-                    ? "Internship Start Date"
-                    : "Date of Joining"
+                  isConfirmationLetter
+                    ? "Confirmation Effective Date"
+                    : isInternshipOffer
+                      ? "Internship Start Date"
+                      : "Date of Joining"
                 }
               >
                 <DatePicker
@@ -1235,7 +1251,7 @@ export default function FormattedLetterPage() {
                 />
               </Field>
             </Col>
-            {!isServiceLetter && !isInternshipOffer && (
+            {!isNonCompensationLetter && !isInternshipOffer && (
               <Col xs={24}>
                 <Divider
                   titlePlacement="left"
@@ -1248,7 +1264,7 @@ export default function FormattedLetterPage() {
                 </Divider>
               </Col>
             )}
-            {!isServiceLetter && !isInternshipOffer && (
+            {!isNonCompensationLetter && !isInternshipOffer && (
               <Col xs={24} sm={12}>
                 <Field label="Annual CTC (e.g. 4,22,268)">
                   <AntInput
@@ -1460,7 +1476,7 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter && !isInternshipOffer && (
+            {!isNonCompensationLetter && !isInternshipOffer && (
               <Col xs={24} sm={12}>
                 <Field label="Variable Pay">
                   <AntSelect
@@ -1487,7 +1503,7 @@ export default function FormattedLetterPage() {
                 </Field>
               </Col>
             )}
-            {!isServiceLetter &&
+            {!isNonCompensationLetter &&
               !isInternshipOffer &&
               hasVariablePay === "YES" && (
                 <Col xs={24} sm={12}>
@@ -1549,7 +1565,7 @@ export default function FormattedLetterPage() {
           </Row>
         </Card>
 
-        {!isServiceLetter && !isInternshipOffer && (
+        {!isNonCompensationLetter && !isInternshipOffer && (
           <Card
             title={
               <Space>
@@ -1642,11 +1658,18 @@ export default function FormattedLetterPage() {
               letterhead without a salary annexure.
             </Text>
           )}
+          {isConfirmationLetter && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              The letter is emailed to the employee's saved email from hr@technnext.com.
+            </Text>
+          )}
           {!canGenerate && (
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {!candidateAddressOk
-                ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
-                : "Enter an employee name, designation, and CTC to enable."}
+              {isConfirmationLetter && !employeeId
+                ? "Select a saved employee to generate a confirmation letter."
+                : !candidateAddressOk
+                  ? "Enter the candidate's address to enable — this candidate isn't saved in the portal."
+                  : "Enter an employee name, designation, and CTC to enable."}
             </Text>
           )}
           {canGenerate && !isServiceLetter && !canSendEmail && (
