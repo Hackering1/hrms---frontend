@@ -21,6 +21,11 @@ import { useAuthStore } from "../store/authStore";
  */
 export default function RoleRoute({ allow }: { allow: string[] }) {
   const roles = useAuthStore((s) => s.roles) ?? [];
-  const permitted = roles.some((r) => allow.includes(r));
+  const normalizedRoles = roles.map((role) => role.replace(/^ROLE_/, ""));
+  // Super Admin is the single unrestricted HRMS owner account. Keep this
+  // universal so newly added protected routes cannot accidentally hide a
+  // module from the owner when their allow-list is incomplete.
+  const permitted = normalizedRoles.includes("SUPER_ADMIN")
+    || normalizedRoles.some((role) => allow.includes(role));
   return permitted ? <Outlet /> : <Navigate to="/dashboard" replace />;
 }

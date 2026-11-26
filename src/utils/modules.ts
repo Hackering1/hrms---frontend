@@ -8,13 +8,24 @@ import {
   UsersRound,
   BarChart3,
   Settings2,
+  WalletCards,
+  ReceiptText,
+  ShieldCheck,
+  Timer,
+  ListTodo,
+  CalendarRange,
+  Goal,
+  Laptop,
+  Eye,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
-export const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE"];
+export const HR = ["SUPER_ADMIN", "HR_ADMIN", "HR_EXECUTIVE", "FINANCE_ADMIN"];
+export const PAYROLL_ROLES = ["SUPER_ADMIN", "FINANCE_ADMIN"];
 export const MANAGER_PLUS = [...HR, "MANAGER"];
 export const ALL: string[] | undefined = undefined;
-export const SUPER_ADMIN_ONLY = ["SUPER_ADMIN"];
+export const ADMIN_ONLY = ["SUPER_ADMIN", "FINANCE_ADMIN"];
 
 export interface SubPage {
   label: string;
@@ -55,17 +66,17 @@ export const MODULES: Module[] = [
       {
         label: "Invite Employee",
         path: "/employees/invite",
-        roles: SUPER_ADMIN_ONLY,
+        roles: ADMIN_ONLY,
       },
       {
         label: "Invitations",
         path: "/employees/invitations",
-        roles: SUPER_ADMIN_ONLY,
+        roles: ADMIN_ONLY,
       },
       {
         label: "Pending Profiles",
         path: "/employees/pending",
-        roles: SUPER_ADMIN_ONLY,
+        roles: ADMIN_ONLY,
       },
       { label: "Documents", path: "/documents/employee" },
       {
@@ -171,10 +182,24 @@ export const MODULES: Module[] = [
       { label: "Tickets", path: "/tickets", roles: HR },
     ],
   },
+  { key: "payroll", label: "Payroll", icon: WalletCards, roles: PAYROLL_ROLES, pages: [{ label: "Payroll", path: "/payroll", roles: PAYROLL_ROLES }] },
+  { key: "payslips", label: "Payslips", icon: ReceiptText, roles: PAYROLL_ROLES, pages: [{ label: "Payslips", path: "/payslips", roles: PAYROLL_ROLES }] },
+  { key: "statutory", label: "PF, ESI & PT", icon: ShieldCheck, roles: PAYROLL_ROLES, pages: [{ label: "PF, ESI & PT", path: "/statutory", roles: PAYROLL_ROLES }] },
+  { key: "time-tracking", label: "Time Tracker", icon: Timer, pages: [{ label: "Time Tracker", path: "/time-tracking" }] },
+  { key: "tasks", label: "Tasks", icon: ListTodo, pages: [{ label: "Tasks", path: "/tasks" }] },
+  { key: "timesheets", label: "Timesheets", icon: CalendarRange, pages: [{ label: "Timesheets", path: "/timesheets" }] },
+  { key: "performance", label: "Performance", icon: Goal, pages: [{ label: "Performance", path: "/performance" }] },
+  { key: "assets", label: "Assets", icon: Laptop, pages: [{ label: "Assets", path: "/assets" }] },
+  { key: "monitoring", label: "Computer Use", icon: Eye, pages: [{ label: "Computer Use", path: "/monitoring" }] },
+  { key: "insights", label: "HR Insights", icon: Sparkles, roles: PAYROLL_ROLES, pages: [{ label: "HR Insights", path: "/hr-insights", roles: PAYROLL_ROLES }] },
 ];
 
-const canSee = (roles: string[] | undefined, userRoles: string[]) =>
-  !roles || roles.some((r) => userRoles.includes(r));
+const canSee = (roles: string[] | undefined, userRoles: string[]) => {
+  const normalizedRoles = userRoles.map((role) => role.replace(/^ROLE_/, ""));
+  return normalizedRoles.includes("SUPER_ADMIN")
+    || !roles
+    || roles.some((role) => normalizedRoles.includes(role));
+};
 
 export function visibleModules(userRoles: string[]): Module[] {
   return MODULES.filter((m) => canSee(m.roles, userRoles))
