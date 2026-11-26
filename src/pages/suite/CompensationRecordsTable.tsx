@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, Popconfirm, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Archive, MailCheck, RotateCcw } from "lucide-react";
+import { Archive, Download, MailCheck, RotateCcw, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient } from "../../services/apiClient";
 import { resourceService } from "../../services/resourceService";
@@ -88,6 +88,25 @@ export default function CompensationRecordsTable({
     onSuccess: async () => { toast.success("Payroll and payslip restored"); await refresh(); },
     onError: () => toast.error("Could not restore payroll"),
   });
+  const remove = useMutation({
+    mutationFn: async (id: string) => (await apiClient.delete<ApiResponse<void>>(`/hr-suite/payslips/${id}`)).data,
+    onSuccess: async () => { toast.success("Payroll and payslip permanently deleted; audit history retained"); await refresh(); },
+    onError: () => toast.error("Could not delete payroll"),
+  });
+  const download = async (row: CompensationRecord) => {
+    try {
+      const response = await apiClient.get(`/hr-suite/payslips/${row.id}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(response.data);
+      const employee = (row.employeeLabel ?? "Employee").replace(/[^A-Za-z0-9_-]/g, "_");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Payslip_${employee}_${row.period ?? "period"}.pdf`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      toast.error("Could not download payslip PDF");
+    }
+  };
 
   const columns: ColumnsType<CompensationRecord> = [
     ...(isHr || isFinance ? [{ title: "Employee", dataIndex: "employeeLabel", key: "employeeLabel" }] : []),
@@ -111,12 +130,18 @@ export default function CompensationRecordsTable({
     columns.push({
       title: "Actions",
       key: "actions",
-      render: (_: unknown, row: CompensationRecord) => row.archivedAt ? (
-        <Button size="small" icon={<RotateCcw size={14} />} loading={restore.isPending && restore.variables === row.id} onClick={() => restore.mutate(row.id)}>
-          Restore
-        </Button>
-      ) : (
+      render: (_: unknown, row: CompensationRecord) => (
         <div className="flex flex-wrap gap-2">
+          {row.archivedAt ? (
+            <Button size="small" icon={<RotateCcw size={14} />} loading={restore.isPending && restore.variables === row.id} onClick={() => restore.mutate(row.id)}>
+              Restore
+            </Button>
+          ) : (
+            <Button size="small" icon={<Download size={14} />} onClick={() => void download(row)}>
+              Download PDF
+            </Button>
+          )}
+          {!row.archivedAt && (
           <Button
             size="small"
             type="primary"
@@ -127,7 +152,9 @@ export default function CompensationRecordsTable({
           >
             {["EMAILED", "APPROVED"].includes(row.status) ? "Resend email" : "Approve & email"}
           </Button>
-          <Popconfirm
+          )}
+          {!row.archivedAt && (
+            <Popconfirm
             title="Archive this payroll and payslip?"
             description="Both records will be hidden from active lists and retained in the audit history for restore."
             okText="Archive"
@@ -136,6 +163,19 @@ export default function CompensationRecordsTable({
           >
             <Button size="small" danger disabled={!row.period || row.period >= currentPayrollPeriod()} icon={<Archive size={14} />} loading={archive.isPending && archive.variables === row.id}>
               Archive
+            </Button>
+            </Popconfirm>
+          )}
+          <Popconfirm
+            title="Permanently delete this payroll and payslip?"
+            description="This removes both records from active and archived history. A deletion audit entry will remain. This cannot be undone."
+            okText="Delete permanently"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => remove.mutate(row.id)}
+          >
+            <Button size="small" danger disabled={!row.period || row.period >= currentPayrollPeriod()} icon={<Trash2 size={14} />} loading={remove.isPending && remove.variables === row.id}>
+              Delete
             </Button>
           </Popconfirm>
         </div>
