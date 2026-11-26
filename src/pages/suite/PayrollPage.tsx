@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Checkbox, Form, Input, InputNumber, Popconfirm, Select, Switch, Table, Tag } from "antd";
+import { Alert, Button, Checkbox, Form, Input, InputNumber, Popconfirm, Select, Switch, Table, Tag, Card } from "antd";
 import { Archive, Download, MailCheck, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient } from "../../services/apiClient";
@@ -8,7 +8,7 @@ import { resourceService } from "../../services/resourceService";
 import type { ApiResponse } from "../../utils/types";
 import type { EmployeeOption } from "./SuiteWorkspacePage";
 
-type Profile = { employeeId: string; gross: number; basic: number; hra: number; lta: number; pfRate: number; esiRate: number; professionalTax: number; tds: number; employerPfRate: number; employerEsiRate: number; gratuity: number; performanceBonusEnabled: boolean; performanceBonus: number; policyVersion?: string };
+type Profile = { employeeId: string; gross: number; basic: number; dearnessAllowance: number; hra: number; lta: number; pfRate: number; pfContributionMode: string; esiRate: number; professionalTax: number; tds: number; employerPfRate: number; employerEsiRate: number; gratuity: number; groupMedicalInsurance: number; performanceBonusEnabled: boolean; performanceBonus: number; taxRegime: "NEW" | "OLD"; taxResident: boolean; taxPreviousEmployerIncome: number; taxPreviousEmployerTds: number; taxOtherAnnualIncome: number; taxRentPaidAnnual: number; taxHraMetro: boolean; taxLandlordName?: string; taxLandlordPan?: string; taxLandlordAddress?: string; taxLtaClaimAnnual: number; taxHomeLoanInterestAnnual: number; taxLenderName?: string; taxLenderPan?: string; tax80cAnnual: number; tax80dAnnual: number; taxNpsAnnual: number; policyVersion?: string };
 type RunEmployee = { employeeId: string; paidDays: number; lopDays: number };
 type PayrollRecord = { id: string; employeeId?: string; employeeLabel?: string; period: string; amount: number; status: string; details?: string; archivedAt?: string | null };
 const money = (value: unknown) => typeof value === "number" ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(value) : String(value ?? "—");
@@ -17,8 +17,8 @@ const errorMessage = (error: unknown, fallback: string) => {
   const response = (error as { response?: { data?: { message?: unknown } } }).response;
   return typeof response?.data?.message === "string" ? response.data.message : fallback;
 };
-const defaults: Omit<Profile, "employeeId"> = { gross: 0, basic: 0, hra: 0, lta: 0, pfRate: 12, esiRate: 0, professionalTax: 0, tds: 0, employerPfRate: 12, employerEsiRate: 0, gratuity: 0, performanceBonusEnabled: false, performanceBonus: 0, policyVersion: "" };
-const DAYS_FIELDS = [{ name: "gross", label: "Gross monthly earnings (₹)" }, { name: "basic", label: "Basic (₹)" }, { name: "hra", label: "House rent allowance (₹)" }, { name: "lta", label: "Leave travel allowance (₹)" }, { name: "pfRate", label: "Employee PF rate (%)" }, { name: "professionalTax", label: "Professional tax (₹)" }, { name: "employerPfRate", label: "Employer PF rate (%)" }, { name: "gratuity", label: "Gratuity provision (₹)" }] as const;
+const defaults: Omit<Profile, "employeeId"> = { gross: 0, basic: 0, dearnessAllowance: 0, hra: 0, lta: 0, pfRate: 12, pfContributionMode: "TWELVE_PERCENT", esiRate: 0, professionalTax: 0, tds: 0, employerPfRate: 12, employerEsiRate: 0, gratuity: 0, groupMedicalInsurance: 1250, performanceBonusEnabled: false, performanceBonus: 0, taxRegime: "NEW", taxResident: true, taxPreviousEmployerIncome: 0, taxPreviousEmployerTds: 0, taxOtherAnnualIncome: 0, taxRentPaidAnnual: 0, taxHraMetro: false, taxLtaClaimAnnual: 0, taxHomeLoanInterestAnnual: 0, tax80cAnnual: 0, tax80dAnnual: 0, taxNpsAnnual: 0, policyVersion: "" };
+const DAYS_FIELDS = [{ name: "gross", label: "Gross monthly earnings (₹)" }, { name: "basic", label: "Basic (₹)" }, { name: "dearnessAllowance", label: "Dearness allowance (₹)" }, { name: "hra", label: "House rent allowance (₹)" }, { name: "lta", label: "Leave travel allowance (₹)" }, { name: "professionalTax", label: "Professional tax (₹)" }, { name: "gratuity", label: "Gratuity provision (₹)" }, { name: "groupMedicalInsurance", label: "Group medical insurance/month (₹)" }] as const;
 const currentPayrollPeriod = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -46,7 +46,7 @@ export default function PayrollPage() {
   const onSelectEmployee = (employeeId: string) => {
     setSelectedEmployee(employeeId);
     const existing = profiles.data?.find((p) => p.employeeId === employeeId);
-    profileForm.setFieldsValue({ ...defaults, ...existing, employeeId });
+    profileForm.setFieldsValue({ ...defaults, ...existing, groupMedicalInsurance: existing?.groupMedicalInsurance ?? 1250, dearnessAllowance: existing?.dearnessAllowance ?? 0, pfContributionMode: existing?.pfContributionMode ?? "TWELVE_PERCENT", taxRegime: existing?.taxRegime ?? "NEW", taxResident: existing?.taxResident ?? true, employeeId });
   };
   const configuredOptions = (profiles.data ?? []).map((p) => ({ value: p.employeeId, label: employeeLabels.get(p.employeeId) ?? "Employee" }));
   const calendarDays = /^\d{4}-(0[1-9]|1[0-2])$/.test(period) ? new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0).getDate() : 0;
@@ -55,32 +55,77 @@ export default function PayrollPage() {
   };
 
   return <div className="space-y-5">
-    <Alert type="warning" showIcon message="Finance controlled payroll" description="Only the Finance Admin and Super Admin can view payroll records. Employees receive only their own approved payslip as a PDF email; they cannot view payroll or payslip records in the portal." />
+    <Alert type="warning" showIcon message="Admin controlled payroll" description="Only Finance Admin and Super Admin can view payroll, employee tax declarations, and payslip records. Employees receive only their own approved payslip by email." />
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h1 className="text-xl font-semibold text-slate-900">Payroll profiles</h1>
-      <p className="mt-1 text-sm text-slate-600">Configure recurring monthly earnings, PF and professional tax, plus an optional performance bonus. ESI and TDS are not deducted by this payroll calculation. Past payroll runs remain unchanged. Basic, HRA and LTA must fit within gross earnings; the remainder is treated as special allowance.</p>
+      <p className="mt-1 text-sm text-slate-600">Set employee earnings, a visible per-employee bonus switch, PF rule, group medical insurance, and employee tax declarations. Employee ESI is not deducted. TDS is calculated from the tax profile and applies only when projected tax is due. Existing payroll runs are never recalculated.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(220px,1fr)_auto]">
         <Select showSearch optionFilterProp="label" placeholder="Select employee to configure" value={selectedEmployee} options={(employees.data ?? []).map((e) => ({ value: e.id, label: `${e.employeeCode} · ${e.displayName}` }))} onChange={onSelectEmployee} loading={employees.isLoading} />
         {selectedEmployee && <Button onClick={() => { setSelectedEmployee(undefined); profileForm.resetFields(); }}>Clear selection</Button>}
       </div>
-      {selectedEmployee && <Form form={profileForm} layout="vertical" onFinish={(values) => saveProfile.mutate(values)} className="mt-4">
+      {selectedEmployee && <Form form={profileForm} layout="vertical" onValuesChange={(changed, all) => {
+        if ("gross" in changed || "dearnessAllowance" in changed) {
+          const floorBasic = Math.max(0, Math.round((Number(all.gross ?? 0) / 2 - Number(all.dearnessAllowance ?? 0)) * 100) / 100);
+          profileForm.setFieldValue("basic", floorBasic);
+        }
+        const basic = Number(("gross" in changed || "dearnessAllowance" in changed) ? Math.max(0, Number(all.gross ?? 0) / 2 - Number(all.dearnessAllowance ?? 0)) : (all.basic ?? 0));
+        if (basic < 25000) profileForm.setFieldValue("pfContributionMode", "TWELVE_PERCENT");
+      }} onFinish={(values) => saveProfile.mutate(values)} className="mt-4">
         <Form.Item name="employeeId" hidden><Input /></Form.Item>
         <Form.Item name="esiRate" hidden><InputNumber /></Form.Item>
         <Form.Item name="tds" hidden><InputNumber /></Form.Item>
         <Form.Item name="employerEsiRate" hidden><InputNumber /></Form.Item>
+        <Form.Item name="pfRate" hidden><InputNumber /></Form.Item>
+        <Form.Item name="employerPfRate" hidden><InputNumber /></Form.Item>
         <div className="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-4">
           {DAYS_FIELDS.map(({ name, label }) => <Form.Item key={name} name={name} label={label} rules={[{ required: true }, { type: "number", min: 0 }, ...(name.toLowerCase().includes("rate") ? [{ type: "number" as const, max: 100 }] : [])]}><InputNumber className="w-full" min={0} precision={2} /></Form.Item>)}
-          <Form.Item name="performanceBonusEnabled" label="Performance bonus" valuePropName="checked"><Switch checkedChildren="On" unCheckedChildren="Off" /></Form.Item>
-          <Form.Item noStyle shouldUpdate={(previous, current) => previous.performanceBonusEnabled !== current.performanceBonusEnabled}>
-            {({ getFieldValue }) => getFieldValue("performanceBonusEnabled")
-              ? <Form.Item name="performanceBonus" label="Monthly performance bonus (₹)" rules={[{ required: true }, { type: "number", min: 0 }]}><InputNumber className="w-full" min={0} precision={2} /></Form.Item>
-              : null}
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.basic !== current.basic || previous.gross !== current.gross || previous.dearnessAllowance !== current.dearnessAllowance}>
+            {({ getFieldValue }) => {
+              const gross = Number(getFieldValue("gross") ?? 0);
+              const wage = Number(getFieldValue("basic") ?? 0) + Number(getFieldValue("dearnessAllowance") ?? 0);
+              return <div className="mb-6 flex items-center"><Tag color={wage >= gross / 2 ? "green" : "red"}>{wage >= gross / 2 ? "Basic + DA meets 50% wage floor" : "Below 50% wage floor"}</Tag></div>;
+            }}
           </Form.Item>
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.basic !== current.basic}>
+            {({ getFieldValue }) => <Form.Item name="pfContributionMode" label="Employee & employer PF rule" rules={[{ required: true }]}>
+              <Select disabled={Number(getFieldValue("basic") ?? 0) < 25000} options={Number(getFieldValue("basic") ?? 0) < 25000
+                ? [{ value: "TWELVE_PERCENT", label: "12% of Basic (required below ₹25,000)" }]
+                : [{ value: "TWELVE_PERCENT", label: "12% of Basic" }, { value: "FLAT_3000", label: "Flat ₹3,000 per month" }]} />
+            </Form.Item>}
+          </Form.Item>
+          <Form.Item name="taxRegime" label="Tax regime" rules={[{ required: true }]}><Select options={[{ value: "NEW", label: "New regime (default)" }, { value: "OLD", label: "Old regime with declarations" }]} /></Form.Item>
+          <Form.Item name="taxResident" label="Indian tax resident" valuePropName="checked"><Switch checkedChildren="Yes" unCheckedChildren="No" /></Form.Item>
           <Form.Item name="policyVersion" label="Policy / rule version"><Input maxLength={80} placeholder="Company payroll policy revision" /></Form.Item>
         </div>
+        <Form.Item noStyle shouldUpdate={(previous, current) => previous.groupMedicalInsurance !== current.groupMedicalInsurance}>
+          {({ getFieldValue }) => <p className="-mt-4 mb-4 text-xs text-slate-500">Employer GMI default is ₹1,250/month (₹15,000/year). GST at 18% is calculated and shown separately: {money(Number(getFieldValue("groupMedicalInsurance") ?? 0) * 0.18)} monthly.</p>}
+        </Form.Item>
+        <Card size="small" className="mb-4 border-blue-200 bg-blue-50/40" title="Performance bonus — per employee">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">Turn this on to include the monthly bonus in gross pay and the payslip. Off excludes it from payroll calculations.</p>
+            <Form.Item name="performanceBonusEnabled" valuePropName="checked" className="mb-0"><Switch checkedChildren="On" unCheckedChildren="Off" /></Form.Item>
+          </div>
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.performanceBonusEnabled !== current.performanceBonusEnabled}>
+            {({ getFieldValue }) => getFieldValue("performanceBonusEnabled")
+              ? <Form.Item className="mb-0 mt-3" name="performanceBonus" label="Monthly performance bonus (₹)" rules={[{ required: true }, { type: "number", min: 0 }]}><InputNumber className="w-full max-w-sm" min={0} precision={2} /></Form.Item>
+              : null}
+          </Form.Item>
+        </Card>
+        <Card size="small" className="mb-4" title="Employee tax declaration · Form 124 / Form 12BB reference">
+          <p className="mb-3 text-xs text-slate-600">Admin-entered annual claims and evidence particulars used for salary TDS. Form 12BB is retained as the familiar reference; for Tax Year 2026–27, use the current Form 124 declaration. TDS is absent when no tax is due.</p>
+          <div className="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[{ name: "taxPreviousEmployerIncome", label: "Previous employer salary (annual ₹)" }, { name: "taxPreviousEmployerTds", label: "TDS already deducted (annual ₹)" }, { name: "taxOtherAnnualIncome", label: "Other annual income (₹)" }, { name: "taxRentPaidAnnual", label: "Rent paid in tax year (₹)" }, { name: "taxLtaClaimAnnual", label: "LTA claim (annual ₹)" }, { name: "taxHomeLoanInterestAnnual", label: "Home-loan interest (annual ₹)" }, { name: "tax80cAnnual", label: "Section 80C claim (annual ₹)" }, { name: "tax80dAnnual", label: "Section 80D claim (annual ₹)" }, { name: "taxNpsAnnual", label: "NPS claim (annual ₹)" }].map(({ name, label }) => <Form.Item key={name} name={name} label={label}><InputNumber className="w-full" min={0} precision={2} /></Form.Item>)}
+            <Form.Item name="taxHraMetro" label="HRA metro rate (50%)" valuePropName="checked"><Switch checkedChildren="Metro" unCheckedChildren="Non-metro" /></Form.Item>
+            <Form.Item name="taxLandlordName" label="Landlord name"><Input maxLength={160} /></Form.Item>
+            <Form.Item name="taxLandlordPan" label="Landlord PAN"><Input maxLength={10} /></Form.Item>
+            <Form.Item name="taxLandlordAddress" label="Landlord address"><Input maxLength={500} /></Form.Item>
+            <Form.Item name="taxLenderName" label="Home-loan lender"><Input maxLength={160} /></Form.Item>
+            <Form.Item name="taxLenderPan" label="Lender PAN"><Input maxLength={10} /></Form.Item>
+          </div>
+        </Card>
         <Button type="primary" htmlType="submit" loading={saveProfile.isPending}>Save payroll profile</Button>
       </Form>}
-      <Table className="mt-5" rowKey="employeeId" loading={profiles.isLoading} dataSource={profiles.data ?? []} pagination={{ pageSize: 8 }} columns={[{ title: "Employee", key: "employee", render: (_, row: Profile) => employeeLabels.get(row.employeeId) ?? "Employee" }, { title: "Gross / month", dataIndex: "gross", render: money }, { title: "Basic / month", dataIndex: "basic", render: money }, { title: "Rule version", dataIndex: "policyVersion", render: (value: string) => value || "—" }, { title: "Action", key: "action", render: (_, row: Profile) => <Button type="link" onClick={() => onSelectEmployee(row.employeeId)}>Edit</Button> }]} />
+      <Table className="mt-5" rowKey="employeeId" loading={profiles.isLoading} dataSource={profiles.data ?? []} pagination={{ pageSize: 8 }} columns={[{ title: "Employee", key: "employee", render: (_, row: Profile) => employeeLabels.get(row.employeeId) ?? "Employee" }, { title: "Gross / month", dataIndex: "gross", render: money }, { title: "Basic / month", dataIndex: "basic", render: money }, { title: "Performance bonus", key: "bonus", render: (_, row: Profile) => <Tag color={row.performanceBonusEnabled ? "green" : "default"}>{row.performanceBonusEnabled ? `ON · ${money(row.performanceBonus)}` : "OFF"}</Tag> }, { title: "PF rule", dataIndex: "pfContributionMode", render: (value: string) => value === "FLAT_3000" ? "Flat ₹3,000" : "12% of Basic" }, { title: "GMI / month", dataIndex: "groupMedicalInsurance", render: money }, { title: "Tax regime", dataIndex: "taxRegime", render: (value: string) => value ?? "NEW" }, { title: "Rule version", dataIndex: "policyVersion", render: (value: string) => value || "—" }, { title: "Action", key: "action", render: (_, row: Profile) => <Button type="link" onClick={() => onSelectEmployee(row.employeeId)}>Edit</Button> }]} />
     </section>
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900">Calculate payroll</h2>
