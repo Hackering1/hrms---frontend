@@ -26,6 +26,14 @@ export const resourceService = {
     return data.data;
   },
 
+  async createEmployee(body: ResourceRecord): Promise<ResourceRecord> {
+    const { data } = await apiClient.post<ApiResponse<ResourceRecord>>(
+      "/employees",
+      body,
+    );
+    return { ...data.data, _apiMessage: data.message };
+  },
+
   async update(
     endpoint: string,
     id: number | string,
