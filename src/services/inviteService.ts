@@ -41,6 +41,14 @@ export const inviteService = {
     return data.data;
   },
 
+  async update(id: string, body: InviteEmployeeInput): Promise<ResourceRecord> {
+    const { data } = await apiClient.put<ApiResponse<ResourceRecord>>(
+      `/employees/invitations/${id}`,
+      body,
+    );
+    return data.data;
+  },
+
   async cancel(id: string): Promise<void> {
     await apiClient.delete(`/employees/invitations/${id}`);
   },
@@ -51,3 +59,4 @@ export const inviteService = {
     return data.data;
   },
 };
+
