@@ -318,7 +318,7 @@ export default function EmployeesPage() {
     mutationFn: (body: ResourceRecord) =>
       editingId
         ? resourceService.update("/employees", editingId, body)
-        : resourceService.create("/employees", body),
+        : resourceService.createEmployee(body),
     onSuccess: (resp: any) => {
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["employees"] });
@@ -383,7 +383,9 @@ export default function EmployeesPage() {
       setEduDocs([]);
       setExpDocs([]);
 
-      if (resp && resp.tempPassword) {
+      if (resp?._apiMessage === "Archived employee restored") {
+        toast.success("Archived employee restored. Their previous records and login have been retained.");
+      } else if (resp && resp.tempPassword) {
         toast.success(
           "Employee added. Login: " +
             resp.email +
@@ -407,7 +409,7 @@ export default function EmployeesPage() {
   const del = useMutation({
     mutationFn: (id: string) => resourceService.remove("/employees", id),
     onSuccess: () => {
-      toast.success("Employee deleted");
+      toast.success("Employee archived. Their history is preserved and their login is disabled.");
       qc.invalidateQueries({ queryKey: ["employees"] });
       qc.invalidateQueries({ queryKey: ["activeUsers"] });
       qc.invalidateQueries({ queryKey: ["deletedUsers"] });
@@ -752,9 +754,9 @@ export default function EmployeesPage() {
               onClick={() => openEdit(row)}
             />
             <Popconfirm
-              title="Delete this employee?"
-              description="This also removes their education and experience records."
-              okText="Delete"
+              title="Archive this employee?"
+              description="This hides the employee from active lists and disables their login. Historical records are preserved. An admin can restore the same employee ID later."
+              okText="Archive"
               okButtonProps={{ danger: true }}
               onConfirm={() => del.mutate(String(row.id))}
             >
